@@ -5,11 +5,24 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
   <meta name="theme-color" content="#070b17">
   <title>Fera GameHub</title>
-  <link rel="stylesheet" href="/styles.css?v=5">
-  <link rel="stylesheet" href="/games.css?v=5">
+  <link rel="stylesheet" href="/styles.css?v=6">
+  <link rel="stylesheet" href="/games.css?v=6">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
+  <div id="languageGate" class="language-gate">
+    <div class="language-panel">
+      <div class="language-logo">F</div>
+      <span>FERA GAMEHUB</span>
+      <h2>Tilni tanlang</h2>
+      <p>Выберите язык · Choose language</p>
+      <div class="language-options">
+        <button data-language="uz"><b>🇺🇿</b><span>O‘zbekcha</span><i>UZ</i></button>
+        <button data-language="ru"><b>🇷🇺</b><span>Русский</span><i>RU</i></button>
+        <button data-language="en"><b>🇬🇧</b><span>English</span><i>EN</i></button>
+      </div>
+    </div>
+  </div>
   <div class="ambient a1"></div><div class="ambient a2"></div>
   <div id="app" class="app">
     <header class="topbar">
@@ -20,76 +33,78 @@
     <main>
       <section id="homeView" class="view active">
         <div class="hero">
-          <div class="hero-copy"><span class="eyebrow">TELEGRAM MINI APP</span><h1>O‘yna. Yut.<br><em>Yetakchi bo‘l.</em></h1><p>Botlarga qarshi tezkor o‘yinlar va jonli reyting.</p></div>
+          <div class="hero-copy"><span class="eyebrow">TELEGRAM MINI APP</span><h1><span data-i18n="heroPlay">O‘yna. Yut.</span><br><em data-i18n="heroLead">Yetakchi bo‘l.</em></h1><p data-i18n="heroText">Botlarga qarshi tezkor o‘yinlar va jonli reyting.</p></div>
           <div class="hero-orb"><div class="orb-core">🎮</div><i></i><i></i><i></i></div>
         </div>
-        <div class="section-title"><div><span>O‘YINLAR</span><h2>Bugun nimani o‘ynaymiz?</h2></div><b id="onlineBadge">● ONLINE</b></div>
+        <div class="section-title"><div><span data-i18n="games">O‘YINLAR</span><h2 data-i18n="today">Bugun nimani o‘ynaymiz?</h2></div><b id="onlineBadge">● ONLINE</b></div>
         <div class="game-grid">
           <button class="game-card uno-card" data-game="uno">
-            <div class="card-glow"></div><span class="tag">ENG MASHHUR</span>
+            <div class="card-glow"></div><span class="tag" data-i18n="popular">ENG MASHHUR</span>
             <div class="art uno-art"><i>7</i><i>+2</i><i>↻</i></div>
-            <div class="game-info"><div><h3>UNO ARENA</h3><p>3 ta aqlli botga qarshi</p></div><span class="play-arrow">›</span></div>
+            <div class="game-info"><div><h3>UNO ARENA</h3><p data-i18n="smartBots">3 ta aqlli botga qarshi</p></div><span class="play-arrow">›</span></div>
           </button>
           <button class="game-card mafia-card" data-game="mafia">
-            <div class="card-glow"></div><span class="tag">SIRLI O‘YIN</span>
+            <div class="card-glow"></div><span class="tag" data-i18n="mystery">SIRLI O‘YIN</span>
             <div class="art mafia-art"><div>🎭</div><i></i></div>
-            <div class="game-info"><div><h3>MAFIA NIGHT</h3><p>Yashirin rol • 7 o‘yinchi</p></div><span class="play-arrow">›</span></div>
+            <div class="game-info"><div><h3>MAFIA NIGHT</h3><p data-i18n="hiddenRole">Yashirin rol • 7 o‘yinchi</p></div><span class="play-arrow">›</span></div>
           </button>
-          <button class="game-card small rps-card" data-game="rps"><div class="mini-icon">✊</div><h3>RPS BATTLE</h3><p>Tezkor jang</p></button>
-          <button class="game-card small reflex-card" data-game="reflex"><div class="mini-icon">⚡</div><h3>REFLEX</h3><p>Reaksiyangni sina</p></button>
-          <button class="game-card small math-card" data-game="math"><div class="mini-icon">➗</div><h3>MATH DUEL</h3><p>10 ta tezkor misol</p></button>
-          <button class="game-card small quiz-card" data-game="quiz"><div class="mini-icon">🧠</div><h3>QUIZ BLITZ</h3><p>Bilimingni tekshir</p></button>
-          <button class="game-card small ttt-card" data-game="ttt"><div class="mini-icon">⭕</div><h3>TIC TAC TOE</h3><p>Aqlli botga qarshi</p></button>
-          <button class="game-card small memory-card" data-game="memory"><div class="mini-icon">🃏</div><h3>MEMORY</h3><p>Juftliklarni top</p></button>
-          <button class="game-card small guess-card" data-game="guess"><div class="mini-icon">🔢</div><h3>SONNI TOP</h3><p>Sirli sonni aniqlang</p></button>
+          <button class="game-card small rps-card" data-game="rps"><div class="mini-icon">✊</div><h3>RPS BATTLE</h3><p data-i18n="quickFight">Tezkor jang</p></button>
+          <button class="game-card small reflex-card" data-game="reflex"><div class="mini-icon">⚡</div><h3>REFLEX</h3><p data-i18n="testReflex">Reaksiyangni sina</p></button>
+          <button class="game-card small math-card" data-game="math"><div class="mini-icon">➗</div><h3>MATH DUEL</h3><p data-i18n="tenMath">10 ta tezkor misol</p></button>
+          <button class="game-card small quiz-card" data-game="quiz"><div class="mini-icon">🧠</div><h3>QUIZ BLITZ</h3><p data-i18n="testKnowledge">Bilimingni tekshir</p></button>
+          <button class="game-card small ttt-card" data-game="ttt"><div class="mini-icon">⭕</div><h3>TIC TAC TOE</h3><p data-i18n="smartBot">Aqlli botga qarshi</p></button>
+          <button class="game-card small memory-card" data-game="memory"><div class="mini-icon">🃏</div><h3>MEMORY</h3><p data-i18n="findPairs">Juftliklarni top</p></button>
+          <button class="game-card small guess-card" data-game="guess"><div class="mini-icon">🔢</div><h3>SONNI TOP</h3><p data-i18n="guessSecret">Sirli sonni aniqlang</p></button>
         </div>
       </section>
 
       <section id="friendsView" class="view">
-        <div class="page-head"><span class="eyebrow">BONUS</span><h1>👥 Do‘stlar</h1><p>Do‘stlaringizni chaqiring va har biri uchun mukofot oling</p></div>
+        <div class="page-head"><span class="eyebrow">BONUS</span><h1>👥 <span data-i18n="friends">Do‘stlar</span></h1><p data-i18n="friendsText">Do‘stlaringizni chaqiring va har biri uchun mukofot oling</p></div>
         <div class="invite-card">
           <div class="stars-orb">⭐</div>
-          <span class="eyebrow">SIZNING BALANSINGIZ</span>
+          <span class="eyebrow" data-i18n="balance">SIZNING BALANSINGIZ</span>
           <h2><b id="friendStars">0</b> Game Stars</h2>
-          <p>Har bir yangi do‘st botga taklif havolangiz orqali kirsa, sizga <strong>+0.5 ⭐</strong>.</p>
-          <button class="btn invite-btn" id="inviteBtn">🚀 DO‘STNI TAKLIF QILISH</button>
-          <button class="copy-link" id="copyInviteBtn">🔗 Havolani nusxalash</button>
-          <small>Game Stars — GameHub ichidagi virtual mukofot.</small>
+          <p data-i18n="inviteRule">Har bir yangi do‘st botga taklif havolangiz orqali kirsa, sizga +0.5 ⭐.</p>
+          <button class="btn invite-btn" id="inviteBtn" data-i18n="invite">🚀 DO‘STNI TAKLIF QILISH</button>
+          <button class="copy-link" id="copyInviteBtn" data-i18n="copy">🔗 Havolani nusxalash</button>
+          <small data-i18n="virtual">Game Stars — GameHub ichidagi virtual mukofot.</small>
         </div>
-        <div class="friend-summary"><span>Taklif qilinganlar</span><b id="friendCount">0 do‘st</b></div>
-        <div class="friend-list" id="friendList"><div class="loader">Yuklanmoqda…</div></div>
+        <div class="friend-summary"><span data-i18n="invited">Taklif qilinganlar</span><b id="friendCount">0 do‘st</b></div>
+        <div class="friend-list" id="friendList"><div class="loader" data-i18n="loading">Yuklanmoqda…</div></div>
       </section>
 
       <section id="leaderView" class="view">
-        <div class="page-head"><span class="eyebrow">GLOBAL</span><h1>🏆 Reyting</h1><p>Eng kuchli o‘yinchilar</p></div>
+        <div class="page-head"><span class="eyebrow">GLOBAL</span><h1>🏆 <span data-i18n="rating">Reyting</span></h1><p data-i18n="bestPlayers">Eng kuchli o‘yinchilar</p></div>
         <div class="podium" id="podium"></div>
-        <div class="rank-list" id="rankList"><div class="loader">Yuklanmoqda…</div></div>
+        <div class="rank-list" id="rankList"><div class="loader" data-i18n="loading">Yuklanmoqda…</div></div>
       </section>
 
       <section id="profileView" class="view">
         <div class="profile-card">
           <div class="avatar" id="profileAvatar">F</div><div class="level-ring"><span>1</span></div>
           <h1 id="profileName">O‘yinchi</h1><p id="profileUser">@telegram</p>
-          <div class="stats"><div><b id="statScore">0</b><span>BALL</span></div><div><b id="statStars">0</b><span>STARS</span></div><div><b id="statWins">0</b><span>G‘ALABA</span></div><div><b id="statGames">0</b><span>O‘YIN</span></div></div>
+          <div class="stats"><div><b id="statScore">0</b><span data-i18n="score">BALL</span></div><div><b id="statStars">0</b><span>STARS</span></div><div><b id="statWins">0</b><span data-i18n="wins">G‘ALABA</span></div><div><b id="statGames">0</b><span data-i18n="gamesStat">O‘YIN</span></div></div>
         </div>
-        <div class="achievement"><span>🔥</span><div><b>Birinchi qadam</b><p>Birinchi o‘yiningizni yakunlang</p></div><i id="achievementState">0/1</i></div>
-        <div class="info-box"><b>Fera GameHub</b><p>UNO, Mafia va tezkor mini-o‘yinlar. Natijalar Telegram profilingizga saqlanadi.</p></div>
+        <div class="achievement"><span>🔥</span><div><b data-i18n="firstStep">Birinchi qadam</b><p data-i18n="finishFirst">Birinchi o‘yiningizni yakunlang</p></div><i id="achievementState">0/1</i></div>
+        <button class="language-settings" id="changeLanguageBtn" data-i18n="changeLanguage">🌐 Tilni o‘zgartirish</button>
+        <div class="info-box"><b>Fera GameHub</b><p data-i18n="about">UNO, Mafia va tezkor mini-o‘yinlar. Natijalar Telegram profilingizga saqlanadi.</p></div>
       </section>
 
       <section id="gameView" class="view game-view">
-        <div class="game-header"><button id="backBtn" class="back-btn">‹</button><div><span id="gameSub">ARENA</span><h2 id="gameTitle">O‘yin</h2></div><div id="gameScore" class="score-chip">0</div></div>
+        <div class="game-header"><button id="backBtn" class="back-btn">‹</button><div><span id="gameSub">ARENA</span><h2 id="gameTitle" data-i18n="game">O‘yin</h2></div><div id="gameScore" class="score-chip">0</div></div>
         <div id="gameStage" class="game-stage"></div>
       </section>
     </main>
 
     <nav class="bottom-nav">
-      <button class="nav-btn active" data-view="home"><span>⌂</span><b>Bosh sahifa</b></button>
-      <button class="nav-btn" data-view="friends"><span>♧</span><b>Do‘stlar</b></button>
-      <button class="nav-btn" data-view="leader"><span>♛</span><b>Reyting</b></button>
-      <button class="nav-btn" data-view="profile"><span>◉</span><b>Profil</b></button>
+      <button class="nav-btn active" data-view="home"><span>⌂</span><b data-i18n="home">Bosh sahifa</b></button>
+      <button class="nav-btn" data-view="friends"><span>♧</span><b data-i18n="friends">Do‘stlar</b></button>
+      <button class="nav-btn" data-view="leader"><span>♛</span><b data-i18n="rating">Reyting</b></button>
+      <button class="nav-btn" data-view="profile"><span>◉</span><b data-i18n="profile">Profil</b></button>
     </nav>
   </div>
   <div id="toast" class="toast"></div>
-  <script src="/app.js?v=5"></script>
+  <script src="/i18n.js?v=6"></script>
+  <script src="/app.js?v=6"></script>
 </body>
 </html>
