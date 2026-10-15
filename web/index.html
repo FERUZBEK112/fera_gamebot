@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#070b17">
+  <title>Fera GameHub</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="ambient a1"></div><div class="ambient a2"></div>
+  <div id="app" class="app">
+    <header class="topbar">
+      <div class="brand"><div class="brand-mark">F</div><div><b>FERA</b><span>GAMEHUB</span></div></div>
+      <button class="icon-btn" id="soundBtn" aria-label="Ovoz">♫</button>
+    </header>
+
+    <main>
+      <section id="homeView" class="view active">
+        <div class="hero">
+          <div class="hero-copy"><span class="eyebrow">TELEGRAM MINI APP</span><h1>O‘yna. Yut.<br><em>Yetakchi bo‘l.</em></h1><p>Botlarga qarshi tezkor o‘yinlar va jonli reyting.</p></div>
+          <div class="hero-orb"><div class="orb-core">🎮</div><i></i><i></i><i></i></div>
+        </div>
+        <div class="section-title"><div><span>O‘YINLAR</span><h2>Bugun nimani o‘ynaymiz?</h2></div><b id="onlineBadge">● ONLINE</b></div>
+        <div class="game-grid">
+          <button class="game-card uno-card" data-game="uno">
+            <div class="card-glow"></div><span class="tag">ENG MASHHUR</span>
+            <div class="art uno-art"><i>7</i><i>+2</i><i>↻</i></div>
+            <div class="game-info"><div><h3>UNO ARENA</h3><p>3 ta aqlli botga qarshi</p></div><span class="play-arrow">›</span></div>
+          </button>
+          <button class="game-card mafia-card" data-game="mafia">
+            <div class="card-glow"></div><span class="tag">SIRLI O‘YIN</span>
+            <div class="art mafia-art"><div>🎭</div><i></i></div>
+            <div class="game-info"><div><h3>MAFIA NIGHT</h3><p>Yashirin rol • 7 o‘yinchi</p></div><span class="play-arrow">›</span></div>
+          </button>
+          <button class="game-card small rps-card" data-game="rps"><div class="mini-icon">✊</div><h3>RPS BATTLE</h3><p>Tezkor jang</p></button>
+          <button class="game-card small reflex-card" data-game="reflex"><div class="mini-icon">⚡</div><h3>REFLEX</h3><p>Reaksiyangni sina</p></button>
+        </div>
+      </section>
+
+      <section id="leaderView" class="view">
+        <div class="page-head"><span class="eyebrow">GLOBAL</span><h1>🏆 Reyting</h1><p>Eng kuchli o‘yinchilar</p></div>
+        <div class="podium" id="podium"></div>
+        <div class="rank-list" id="rankList"><div class="loader">Yuklanmoqda…</div></div>
+      </section>
+
+      <section id="profileView" class="view">
+        <div class="profile-card">
+          <div class="avatar" id="profileAvatar">F</div><div class="level-ring"><span>1</span></div>
+          <h1 id="profileName">O‘yinchi</h1><p id="profileUser">@telegram</p>
+          <div class="stats"><div><b id="statScore">0</b><span>BALL</span></div><div><b id="statWins">0</b><span>G‘ALABA</span></div><div><b id="statGames">0</b><span>O‘YIN</span></div></div>
+        </div>
+        <div class="achievement"><span>🔥</span><div><b>Birinchi qadam</b><p>Birinchi o‘yiningizni yakunlang</p></div><i id="achievementState">0/1</i></div>
+        <div class="info-box"><b>Fera GameHub</b><p>UNO, Mafia va tezkor mini-o‘yinlar. Natijalar Telegram profilingizga saqlanadi.</p></div>
+      </section>
+
+      <section id="gameView" class="view game-view">
+        <div class="game-header"><button id="backBtn" class="back-btn">‹</button><div><span id="gameSub">ARENA</span><h2 id="gameTitle">O‘yin</h2></div><div id="gameScore" class="score-chip">0</div></div>
+        <div id="gameStage" class="game-stage"></div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-view="home"><span>⌂</span><b>Bosh sahifa</b></button>
+      <button class="nav-btn" data-view="leader"><span>♛</span><b>Reyting</b></button>
+      <button class="nav-btn" data-view="profile"><span>◉</span><b>Profil</b></button>
+    </nav>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
