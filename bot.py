@@ -45,6 +45,8 @@ def init_db():
             con.execute("ALTER TABLE users ADD COLUMN score INTEGER NOT NULL DEFAULT 0")
         if "stars_milli" not in columns:
             con.execute("ALTER TABLE users ADD COLUMN stars_milli INTEGER NOT NULL DEFAULT 0")
+        if "language" not in columns:
+            con.execute("ALTER TABLE users ADD COLUMN language TEXT NOT NULL DEFAULT '';")
         con.execute("""CREATE TABLE IF NOT EXISTS results(
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
             game TEXT NOT NULL, won INTEGER NOT NULL, score INTEGER NOT NULL,
@@ -157,7 +159,7 @@ class Handler(BaseHTTPRequestHandler):
             uid = upsert_user(user)
             with db_connect() as con:
                 row = con.execute(
-                    "SELECT id,name,username,score,wins,played,stars_milli FROM users WHERE id=?", (uid,)
+                    "SELECT id,name,username,score,wins,played,stars_milli,language FROM users WHERE id=?", (uid,)
                 ).fetchone()
                 referrals = con.execute(
                     "SELECT COUNT(*) AS c FROM referrals WHERE inviter_id=?", (uid,)
@@ -200,6 +202,25 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urllib.parse.urlparse(self.path).path
+        if path == "/api/language":
+            user = self.current_user()
+            if not user:
+                return self.send_json(401, {"ok": False})
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length < 2 or length > 256:
+                    raise ValueError
+                payload = json.loads(self.rfile.read(length))
+                language = str(payload.get("language", "")).lower()
+                if language not in ("uz", "ru", "en"):
+                    raise ValueError
+            except (ValueError, TypeError, json.JSONDecodeError):
+                return self.send_json(400, {"ok": False, "error": "invalid_language"})
+            uid = upsert_user(user)
+            with db_connect() as con:
+                con.execute("UPDATE users SET language=? WHERE id=?", (language, uid))
+                con.commit()
+            return self.send_json(200, {"ok": True, "language": language})
         if path != "/api/result":
             return self.send_json(404, {"ok": False})
         user = self.current_user()
