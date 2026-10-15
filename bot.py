@@ -23,7 +23,7 @@ DATA_DIR = Path(os.getenv("DATA_DIR", "./data"))
 WEB_DIR = Path(__file__).parent / "web"
 DB_PATH = DATA_DIR / "games.db"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-ALLOWED_GAMES = {"uno": 200, "mafia": 250, "rps": 60, "reflex": 350, "math": 200, "quiz": 200}
+ALLOWED_GAMES = {"uno": 200, "mafia": 250, "rps": 60, "reflex": 350, "math": 200, "quiz": 200, "ttt": 180, "memory": 240, "guess": 160}
 
 
 def db_connect():
@@ -252,7 +252,7 @@ class Handler(BaseHTTPRequestHandler):
         content_type = mimetypes.guess_type(candidate.name)[0] or "application/octet-stream"
         self.send_response(200)
         self.send_header("Content-Type", content_type + ("; charset=utf-8" if content_type.startswith(("text/", "application/javascript")) else ""))
-        self.send_header("Cache-Control", "no-cache" if candidate.name == "index.html" else "public,max-age=3600")
+        self.send_header("Cache-Control", "no-store, max-age=0")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org")
         self.send_header("Content-Length", str(len(body)))
