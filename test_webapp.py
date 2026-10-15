@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 HTML = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
 APP = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+I18N = (ROOT / "web" / "i18n.js").read_text(encoding="utf-8")
 
 
 class MiniAppTest(unittest.TestCase):
@@ -21,6 +22,14 @@ class MiniAppTest(unittest.TestCase):
     def test_multi_element_handlers_use_query_selector_all(self):
         broken = re.findall(r"(?<!\$)\$\([^\n;]+\)\.forEach", APP)
         self.assertEqual([], broken, "querySelector cannot be used with forEach")
+
+    def test_three_language_chooser_is_complete(self):
+        for language in ("uz", "ru", "en"):
+            self.assertIn('data-language="' + language + '"', HTML)
+            self.assertIn(language + ":{", I18N)
+        self.assertIn("changeLanguageBtn", HTML)
+        self.assertIn("onFeraLanguageChange", APP)
+        self.assertIn("/api/language", APP)
 
     def test_music_and_cache_busting_are_enabled(self):
         self.assertIn("function startMusic()", APP)
