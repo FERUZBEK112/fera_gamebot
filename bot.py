@@ -17,12 +17,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 TOKEN = os.getenv("BOT_TOKEN", "")
 ADMIN_ID = os.getenv("ADMIN_ID", "")
 APP_URL = os.getenv("APP_URL", "").rstrip("/")
+BOT_USERNAME = os.getenv("BOT_USERNAME", "fera_gamesbot").lstrip("@")
 PORT = int(os.getenv("PORT", "8080"))
 DATA_DIR = Path(os.getenv("DATA_DIR", "./data"))
 WEB_DIR = Path(__file__).parent / "web"
 DB_PATH = DATA_DIR / "games.db"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-ALLOWED_GAMES = {"uno": 200, "mafia": 250, "rps": 60, "reflex": 350}
+ALLOWED_GAMES = {"uno": 200, "mafia": 250, "rps": 60, "reflex": 350, "math": 200, "quiz": 200}
 
 
 def db_connect():
@@ -42,12 +43,19 @@ def init_db():
             con.execute("ALTER TABLE users ADD COLUMN username TEXT NOT NULL DEFAULT ''")
         if "score" not in columns:
             con.execute("ALTER TABLE users ADD COLUMN score INTEGER NOT NULL DEFAULT 0")
+        if "stars_milli" not in columns:
+            con.execute("ALTER TABLE users ADD COLUMN stars_milli INTEGER NOT NULL DEFAULT 0")
         con.execute("""CREATE TABLE IF NOT EXISTS results(
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
             game TEXT NOT NULL, won INTEGER NOT NULL, score INTEGER NOT NULL,
             created_at INTEGER NOT NULL
         )""")
         con.execute("CREATE INDEX IF NOT EXISTS idx_results_user ON results(user_id)")
+        con.execute("""CREATE TABLE IF NOT EXISTS referrals(
+            invited_id INTEGER PRIMARY KEY, inviter_id INTEGER NOT NULL,
+            created_at INTEGER NOT NULL
+        )""")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals(inviter_id)")
         con.commit()
 
 
@@ -76,6 +84,25 @@ def upsert_user(user):
         )
         con.commit()
     return uid
+
+
+def register_referral(invited_id, inviter_id):
+    """Credit one verified Telegram user once. Returns True on a new referral."""
+    if invited_id == inviter_id:
+        return False
+    with db_connect() as con:
+        inviter = con.execute("SELECT id FROM users WHERE id=?", (inviter_id,)).fetchone()
+        if not inviter:
+            return False
+        cursor = con.execute(
+            "INSERT OR IGNORE INTO referrals(invited_id,inviter_id,created_at) VALUES(?,?,?)",
+            (invited_id, inviter_id, int(time.time())),
+        )
+        if cursor.rowcount != 1:
+            return False
+        con.execute("UPDATE users SET stars_milli=stars_milli+500 WHERE id=?", (inviter_id,))
+        con.commit()
+    return True
 
 
 def validate_init_data(raw):
@@ -129,8 +156,36 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(401, {"ok": False})
             uid = upsert_user(user)
             with db_connect() as con:
-                row = con.execute("SELECT id,name,username,score,wins,played FROM users WHERE id=?", (uid,)).fetchone()
-            return self.send_json(200, {"ok": True, "user": dict(row)})
+                row = con.execute(
+                    "SELECT id,name,username,score,wins,played,stars_milli FROM users WHERE id=?", (uid,)
+                ).fetchone()
+                referrals = con.execute(
+                    "SELECT COUNT(*) AS c FROM referrals WHERE inviter_id=?", (uid,)
+                ).fetchone()["c"]
+            data = dict(row)
+            data["stars"] = data.pop("stars_milli", 0) / 1000
+            data["referrals"] = referrals
+            return self.send_json(200, {"ok": True, "user": data})
+        if path == "/api/referral":
+            user = self.current_user()
+            if not user:
+                return self.send_json(401, {"ok": False})
+            uid = upsert_user(user)
+            with db_connect() as con:
+                row = con.execute("SELECT stars_milli FROM users WHERE id=?", (uid,)).fetchone()
+                friends = con.execute(
+                    """SELECT u.name,u.username,r.created_at FROM referrals r
+                       JOIN users u ON u.id=r.invited_id
+                       WHERE r.inviter_id=? ORDER BY r.created_at DESC LIMIT 30""",
+                    (uid,),
+                ).fetchall()
+            return self.send_json(200, {
+                "ok": True,
+                "stars": int(row["stars_milli"]) / 1000,
+                "count": len(friends),
+                "link": "https://t.me/" + BOT_USERNAME + "?start=ref_" + str(uid),
+                "friends": [dict(friend) for friend in friends],
+            })
         if path == "/api/leaderboard":
             user = self.current_user()
             if not user:
@@ -222,17 +277,39 @@ def handle_update(update):
     if not message or message.get("chat", {}).get("type") != "private":
         return
     user = message.get("from", {})
-    if user.get("id"):
-        upsert_user(user)
+    uid = upsert_user(user) if user.get("id") else None
     text = message.get("text", "")
     chat_id = message["chat"]["id"]
-    if text in ("/start", "/games"):
-        start_message(chat_id, user.get("first_name", "O‘yinchi"))
-    elif text == "/admin" and str(user.get("id")) == ADMIN_ID:
+    parts = text.split(maxsplit=1)
+    command = parts[0].split("@", 1)[0] if parts else ""
+    referral_added = False
+    if command == "/start" and len(parts) > 1 and parts[1].startswith("ref_") and uid:
+        try:
+            inviter_id = int(parts[1][4:])
+            referral_added = register_referral(uid, inviter_id)
+            if referral_added:
+                telegram_api(
+                    "sendMessage",
+                    chat_id=inviter_id,
+                    text="🎉 Yangi do‘stingiz GameHub’ga qo‘shildi!\n\n⭐ +0.5 Game Stars hisobingizga yozildi.",
+                )
+        except (ValueError, TypeError):
+            pass
+    if command in ("/start", "/games"):
+        first_name = user.get("first_name", "O‘yinchi")
+        start_message(chat_id, first_name)
+        if referral_added:
+            telegram_api("sendMessage", chat_id=chat_id, text="✅ Taklif qabul qilindi. Endi o‘yinlardan birini tanlang!")
+    elif command == "/admin" and str(user.get("id")) == ADMIN_ID:
         with db_connect() as con:
             users = con.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
             games = con.execute("SELECT COUNT(*) AS c FROM results").fetchone()["c"]
-        telegram_api("sendMessage", chat_id=chat_id, text="🛠 Admin\n\nFoydalanuvchilar: %s\nO‘yinlar: %s" % (users, games))
+            referrals = con.execute("SELECT COUNT(*) AS c FROM referrals").fetchone()["c"]
+        telegram_api(
+            "sendMessage",
+            chat_id=chat_id,
+            text="🛠 Admin\n\nFoydalanuvchilar: %s\nO‘yinlar: %s\nTakliflar: %s" % (users, games, referrals),
+        )
     else:
         start_message(chat_id, user.get("first_name", "O‘yinchi"))
 
