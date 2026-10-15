@@ -5,7 +5,7 @@ if(tg){tg.ready();tg.expand();try{tg.setHeaderColor("#070b17");tg.setBackgroundC
 var initData=tg?tg.initData:"";
 var user=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user?tg.initDataUnsafe.user:null;
 var profile={name:user?(user.first_name+(user.last_name?" "+user.last_name:"")):"Mehmon",username:user&&user.username?"@"+user.username:"Telegram orqali oching",score:0,wins:0,played:0,stars:0,referrals:0};
-var sound=true,currentGame=null,reflexTimer=null,challengeTimer=null,inviteLink="";
+var sound=true,currentGame=null,reflexTimer=null,challengeTimer=null,inviteLink=user?("https://t.me/fera_gamesbot?start=ref_"+user.id):"";
 var $=function(q){return document.querySelector(q)};
 var $$=function(q){return Array.prototype.slice.call(document.querySelectorAll(q))};
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]})}
@@ -39,10 +39,11 @@ async function loadFriends(){
  renderProfile();
 }
 function formatStars(n){return Number(n||0).toFixed(1).replace(".0","")}
-function shareInvite(){
- if(!inviteLink){toast("Havola tayyorlanmoqda…");loadFriends();return}
- var share="https://t.me/share/url?url="+encodeURIComponent(inviteLink)+"&text="+encodeURIComponent("🎮 Fera GameHub’da men bilan o‘yna! UNO, Mafia, Math va Quiz bor.");
- if(tg&&tg.openTelegramLink)tg.openTelegramLink(share);else window.open(share,"_blank");
+async function shareInvite(){
+ if(!inviteLink)await loadFriends();
+ if(!inviteLink)return toast("Mini App’ni Telegram ichidan oching");
+ var share="https://t.me/share/url?url="+encodeURIComponent(inviteLink)+"&text="+encodeURIComponent("🎮 Fera GameHub’da men bilan o‘yna! UNO, Mafia, Math, Quiz va yana ko‘p o‘yinlar bor.");
+ try{if(tg&&tg.openTelegramLink)tg.openTelegramLink(share);else window.open(share,"_blank")}catch(e){window.open(share,"_blank")}
 }
 $("#inviteBtn").onclick=shareInvite;
 $("#copyInviteBtn").onclick=async function(){
@@ -64,7 +65,11 @@ async function loadLeaderboard(){
  $("#podium").innerHTML=order.map(function(x,i){var place=[2,1,3][i];return'<div class="podium-item '+classes[i]+'"><div class="p-avatar">'+esc((x.name||"?").charAt(0))+'</div><b>'+esc(x.name)+'</b><span>'+x.score+' ball</span><div class="stand">'+place+'</div></div>'}).join("");
  $("#rankList").innerHTML=rows.slice(3,20).map(function(x,i){return'<div class="rank-row"><span>'+(i+4)+'</span><div class="rank-avatar">'+esc((x.name||"?").charAt(0))+'</div><div><h4>'+esc(x.name)+'</h4><p>'+(x.wins||0)+' g‘alaba</p></div><b class="rank-score">'+(x.score||0)+'</b></div>'}).join("")||'<div class="loader">Hali boshqa o‘yinchilar yo‘q</div>';
 }
-function openGame(g){currentGame=g;if(challengeTimer)clearInterval(challengeTimer);showView("game");if(g==="uno")startUno();else if(g==="mafia")startMafia();else if(g==="rps")startRps();else if(g==="reflex")startReflex();else if(g==="math")startMath();else startQuiz()}
+function openGame(g){
+ currentGame=g;if(challengeTimer)clearInterval(challengeTimer);showView("game");
+ var games={uno:startUno,mafia:startMafia,rps:startRps,reflex:startReflex,math:startMath,quiz:startQuiz,ttt:startTtt,memory:startMemory,guess:startGuess};
+ if(games[g])games[g]();else{toast("O‘yin topilmadi");showView("home")}
+}
 
 /* UNO */
 var UCOL={R:"c-red",Y:"c-yellow",G:"c-green",B:"c-blue",W:"c-wild"},UNO=null;
@@ -137,6 +142,60 @@ function playRps(me){var icons=["✊","✌️","🖐️"],bot=Math.floor(Math.ra
 /* REFLEX */
 function startReflex(){setGame("REFLEX","REAKSIYA TESTI","⚡");$("#gameStage").innerHTML='<div class="reflex-box" id="reflexBox"><div class="reflex-content"><div class="bolt">⚡</div><h2>Qanchalik tezsiz?</h2><p>Rang yashil bo‘lganda darhol bosing.</p><button class="btn" id="reflexStart">BOSHLASH</button></div></div>';$("#reflexStart").onclick=armReflex}
 function armReflex(){var box=$("#reflexBox");box.className="reflex-box waiting";box.innerHTML='<div class="reflex-content"><div class="bolt pulse">•••</div><h2>Kuting…</h2><p>Hali bosmang</p></div>';var ready=false,start=0;box.onclick=function(){if(!ready){clearTimeout(reflexTimer);box.className="reflex-box early";box.innerHTML='<div class="reflex-content"><div class="bolt">😅</div><h2>Juda erta!</h2><button class="btn" id="retryReflex">QAYTA</button></div>';$("#retryReflex").onclick=function(e){e.stopPropagation();armReflex()}}else{var ms=Math.round(performance.now()-start),score=Math.max(10,Math.min(300,420-ms));record("reflex",ms<350,score);box.onclick=null;box.innerHTML='<div class="reflex-content"><div class="reflex-time">'+ms+' ms</div><h2>'+(ms<220?"CHАQMOQ!":ms<350?"AJOYIB!":"YAXSHI")+'</h2><p>+'+score+' ball</p><button class="btn" id="retryReflex">YANA</button></div>';$("#retryReflex").onclick=armReflex;haptic(ms<350?"success":"light")}};reflexTimer=setTimeout(function(){ready=true;start=performance.now();box.className="reflex-box ready";box.innerHTML='<div class="reflex-content"><div class="bolt">⚡</div><h2>BOSING!</h2></div>'},1500+Math.random()*2600)}
+
+/* TIC TAC TOE */
+var TTT=null;
+function startTtt(){setGame("TIC TAC TOE","BOTGA QARSHI","SIZ: X");TTT={board:["","","","","","","","",""],turn:true,done:false};renderTtt()}
+function renderTtt(){
+ $("#gameStage").innerHTML='<div class="ttt-wrap"><div class="ttt-status">'+(TTT.done?"O‘yin tugadi":TTT.turn?"Sizning yurishingiz":"Bot o‘ylayapti…")+'</div><div class="ttt-board">'+TTT.board.map(function(x,i){return'<button data-cell="'+i+'" '+(x||!TTT.turn||TTT.done?"disabled":"")+'>'+x+'</button>'}).join("")+'</div><p class="uno-log">Uchta belgini bir qatorga joylang</p></div>';
+ $("[data-cell]").forEach(function(b){b.onclick=function(){tttMove(Number(b.dataset.cell))}});
+}
+function tttWinner(){
+ var lines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+ for(var i=0;i<lines.length;i++){var a=lines[i][0],b=lines[i][1],c=lines[i][2];if(TTT.board[a]&&TTT.board[a]===TTT.board[b]&&TTT.board[a]===TTT.board[c])return TTT.board[a]}
+ return TTT.board.every(Boolean)?"draw":"";
+}
+function tttMove(i){if(!TTT.turn||TTT.board[i]||TTT.done)return;TTT.board[i]="X";var result=tttWinner();if(result)return endTtt(result);TTT.turn=false;renderTtt();setTimeout(tttBot,450)}
+function tttBot(){
+ if(!TTT||TTT.done)return;
+ function find(mark){var free=TTT.board.map(function(x,i){return x?"":i}).filter(function(x){return x!==""});for(var j=0;j<free.length;j++){TTT.board[free[j]]=mark;var win=tttWinner()===mark;TTT.board[free[j]]="";if(win)return free[j]}return-1}
+ var move=find("O");if(move<0)move=find("X");if(move<0&&!TTT.board[4])move=4;
+ if(move<0){var choices=[0,2,6,8,1,3,5,7].filter(function(i){return!TTT.board[i]});move=choices[Math.floor(Math.random()*choices.length)]}
+ TTT.board[move]="O";var result=tttWinner();if(result)return endTtt(result);TTT.turn=true;renderTtt();
+}
+function endTtt(result){TTT.done=true;var win=result==="X",draw=result==="draw";record("ttt",win,win?150:draw?40:10);renderTtt();setTimeout(function(){$("#gameStage").innerHTML='<div class="game-result"><div class="big">'+(win?"🏆":draw?"🤝":"🤖")+'</div><h2>'+(win?"Siz yutdingiz!":draw?"Durrang":"Bot yutdi")+'</h2><p>+'+(win?150:draw?40:10)+' ball</p><button class="btn" id="againTtt">YANA O‘YNASH</button></div>';$("#againTtt").onclick=startTtt},350)}
+
+/* MEMORY MATCH */
+var MEMORY=null;
+function startMemory(){setGame("MEMORY","JUFTLIKLARNI TOPING","0 / 6");var cards=shuffle(["🚀","🎮","⭐","🔥","👾","💎","🚀","🎮","⭐","🔥","👾","💎"]);MEMORY={cards:cards,open:[],matched:{},moves:0,lock:false};renderMemory()}
+function renderMemory(){
+ var found=Object.keys(MEMORY.matched).length/2;$("#gameScore").textContent=found+" / 6";
+ $("#gameStage").innerHTML='<div class="memory-wrap"><div class="memory-board">'+MEMORY.cards.map(function(x,i){var shown=MEMORY.open.indexOf(i)>=0||MEMORY.matched[i];return'<button class="'+(shown?"flipped ":"")+(MEMORY.matched[i]?"matched":"")+'" data-memory="'+i+'" '+(MEMORY.lock||MEMORY.matched[i]?"disabled":"")+'><span>'+(shown?x:"?")+'</span></button>'}).join("")+'</div><p class="uno-log">Harakatlar: '+MEMORY.moves+' • Bir xil rasmlarni toping</p></div>';
+ $("[data-memory]").forEach(function(b){b.onclick=function(){flipMemory(Number(b.dataset.memory))}});
+}
+function flipMemory(i){
+ if(MEMORY.lock||MEMORY.matched[i]||MEMORY.open.indexOf(i)>=0)return;MEMORY.open.push(i);haptic("light");renderMemory();
+ if(MEMORY.open.length===2){MEMORY.moves++;var a=MEMORY.open[0],b=MEMORY.open[1];MEMORY.lock=true;
+  if(MEMORY.cards[a]===MEMORY.cards[b]){MEMORY.matched[a]=MEMORY.matched[b]=true;MEMORY.open=[];MEMORY.lock=false;haptic("success");if(Object.keys(MEMORY.matched).length===12)return endMemory();renderMemory()}
+  else setTimeout(function(){MEMORY.open=[];MEMORY.lock=false;renderMemory()},700);
+ }
+}
+function endMemory(){var score=Math.max(60,240-MEMORY.moves*10);record("memory",true,score);setTimeout(function(){$("#gameStage").innerHTML='<div class="game-result"><div class="big">🧠</div><h2>Hammasini topdingiz!</h2><p>'+MEMORY.moves+' harakat • +'+score+' ball</p><button class="btn" id="againMemory">YANA O‘YNASH</button></div>';$("#againMemory").onclick=startMemory},400)}
+
+/* GUESS THE NUMBER */
+var GUESS=null;
+function startGuess(){setGame("SONNI TOP","1 DAN 100 GACHA","7 URINISH");GUESS={secret:1+Math.floor(Math.random()*100),tries:0,max:7,done:false};renderGuess("Men 1–100 oralig‘ida son o‘yladim.")}
+function renderGuess(message){
+ $("#gameScore").textContent=(GUESS.max-GUESS.tries)+" urinish";
+ $("#gameStage").innerHTML='<div class="guess-wrap"><div class="guess-orb">?</div><h2>Sirli sonni toping</h2><p id="guessHint">'+esc(message)+'</p><div class="guess-input"><input id="guessNumber" type="number" min="1" max="100" inputmode="numeric" placeholder="1–100"><button class="btn" id="guessBtn">TEKSHIRISH</button></div><div class="guess-range"><span>1</span><i></i><span>100</span></div></div>';
+ $("#guessBtn").onclick=submitGuess;$("#guessNumber").onkeydown=function(e){if(e.key==="Enter")submitGuess()};setTimeout(function(){$("#guessNumber").focus()},50);
+}
+function submitGuess(){
+ if(GUESS.done)return;var value=Number($("#guessNumber").value);if(!Number.isInteger(value)||value<1||value>100)return toast("1 dan 100 gacha son kiriting");
+ GUESS.tries++;if(value===GUESS.secret){GUESS.done=true;var score=Math.max(40,160-GUESS.tries*15);record("guess",true,score);haptic("success");$("#gameStage").innerHTML='<div class="game-result"><div class="big">🎯</div><h2>Topdingiz!</h2><p>Sirli son '+GUESS.secret+' edi • +'+score+' ball</p><button class="btn" id="againGuess">YANA O‘YNASH</button></div>';$("#againGuess").onclick=startGuess;return}
+ if(GUESS.tries>=GUESS.max){GUESS.done=true;record("guess",false,10);haptic("error");$("#gameStage").innerHTML='<div class="game-result"><div class="big">🔢</div><h2>Urinishlar tugadi</h2><p>Sirli son '+GUESS.secret+' edi</p><button class="btn" id="againGuess">QAYTA URINISH</button></div>';$("#againGuess").onclick=startGuess;return}
+ renderGuess(value<GUESS.secret?"📈 Kattaroq son kiriting":"📉 Kichikroq son kiriting");
+}
 
 /* MATH DUEL & QUIZ BLITZ */
 var CHALLENGE=null;
