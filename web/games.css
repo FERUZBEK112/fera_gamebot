@@ -8,3 +8,19 @@
 .answer-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}.answer-btn{min-height:67px;padding:11px;border:1px solid #ffffff10;border-radius:18px;background:#10182e;color:white;font-size:16px;font-weight:900}.answer-btn:active{transform:scale(.97)}.answer-btn.correct{border-color:#2ce2a0;background:#123f36}.answer-btn.wrong{border-color:#ff3e72;background:#4b1830}.answer-btn small{display:block;color:#73809f;font-size:8px;margin-bottom:3px}
 .timer-bar{height:5px;margin-top:14px;border-radius:7px;background:#ffffff0d;overflow:hidden}.timer-bar i{display:block;width:100%;height:100%;background:linear-gradient(90deg,var(--green),var(--gold),var(--red));transform-origin:left}
 .challenge-score{text-align:center;margin-top:12px;color:#9ca8c3;font-size:11px}.challenge-score b{color:var(--gold)}
+
+
+/* Extra game cards */
+.ttt-card{background:linear-gradient(145deg,#132746,#11182c)}.ttt-card .mini-icon{background:linear-gradient(145deg,#4b7cff44,#38ddff22)}
+.memory-card{background:linear-gradient(145deg,#312143,#15142c)}.memory-card .mini-icon{background:linear-gradient(145deg,#ffcf5733,#8c55ff44)}
+.guess-card{background:linear-gradient(145deg,#15372e,#101c27)}.guess-card .mini-icon{background:linear-gradient(145deg,#2ce2a044,#38ddff22)}
+
+/* Tic Tac Toe */
+.ttt-wrap{padding-top:18px;text-align:center}.ttt-status{margin-bottom:16px;color:#aeb9d1;font-size:12px;font-weight:800}.ttt-board{display:grid;grid-template-columns:repeat(3,92px);justify-content:center;gap:9px}.ttt-board button{width:92px;height:92px;border:1px solid #ffffff12;border-radius:22px;background:linear-gradient(145deg,#121d38,#0c1225);color:var(--cyan);font-size:44px;font-weight:1000;box-shadow:0 10px 24px #0004}.ttt-board button:disabled{opacity:1}.ttt-board button:nth-child(n){text-shadow:0 0 20px #38ddff55}
+
+/* Memory */
+.memory-wrap{padding-top:12px}.memory-board{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.memory-board button{aspect-ratio:1;border:1px solid #ffffff10;border-radius:18px;background:linear-gradient(145deg,#141d36,#0c1225);color:#71809f;font-size:26px;font-weight:1000;transform-style:preserve-3d;transition:.2s}.memory-board button.flipped{background:linear-gradient(145deg,#27345d,#171e39);color:white;transform:rotateY(180deg)}.memory-board button.flipped span{display:block;transform:rotateY(180deg)}.memory-board button.matched{border-color:#2ce2a055;box-shadow:inset 0 0 20px #2ce2a022}
+
+/* Guess number */
+.guess-wrap{text-align:center;padding:30px 14px 10px}.guess-orb{width:110px;height:110px;margin:0 auto 18px;display:grid;place-items:center;border-radius:38px;background:radial-gradient(circle at 35% 25%,#38ddff,#4b7cff 50%,#8c55ff);font-size:58px;font-weight:1000;box-shadow:0 20px 45px #4b7cff44}.guess-wrap h2{margin:8px 0}.guess-wrap>p{min-height:24px;color:#9ba8c5;font-size:12px}.guess-input{display:flex;gap:9px;margin-top:18px}.guess-input input{width:110px;border:1px solid #ffffff16;border-radius:16px;background:#0e162b;color:white;text-align:center;font-size:21px;font-weight:900;outline:0}.guess-input input:focus{border-color:var(--cyan)}.guess-input .btn{flex:1}.guess-range{display:flex;align-items:center;gap:10px;margin-top:20px;color:#697590;font-size:10px}.guess-range i{height:3px;flex:1;border-radius:4px;background:linear-gradient(90deg,var(--cyan),var(--violet))}
+@media(max-width:360px){.ttt-board{grid-template-columns:repeat(3,82px)}.ttt-board button{width:82px;height:82px}.memory-board{gap:7px}}
