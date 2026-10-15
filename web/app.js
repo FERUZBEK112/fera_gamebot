@@ -4,7 +4,7 @@ var tg=window.Telegram&&window.Telegram.WebApp;
 if(tg){tg.ready();tg.expand();try{tg.setHeaderColor("#070b17");tg.setBackgroundColor("#060914")}catch(e){}}
 var initData=tg?tg.initData:"";
 var user=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user?tg.initDataUnsafe.user:null;
-var profile={name:user?(user.first_name+(user.last_name?" "+user.last_name:"")):"Mehmon",username:user&&user.username?"@"+user.username:"Telegram orqali oching",score:0,wins:0,played:0,stars:0,referrals:0};
+var profile={name:user?(user.first_name+(user.last_name?" "+user.last_name:"")):"Mehmon",username:user&&user.username?"@"+user.username:"Telegram orqali oching",score:0,wins:0,played:0,stars:0,referrals:0,language:""};
 var sound=true,currentGame=null,reflexTimer=null,challengeTimer=null,inviteLink=user?("https://t.me/fera_gamesbot?start=ref_"+user.id):"";
 var $=function(q){return document.querySelector(q)};
 var $$=function(q){return Array.prototype.slice.call(document.querySelectorAll(q))};
@@ -31,6 +31,7 @@ function stopMusic(){if(musicTimer)clearTimeout(musicTimer);musicTimer=null;musi
 function sfx(type){if(type==="success"){tone(523,.12,.045,"sine");setTimeout(function(){tone(784,.18,.04,"sine")},90)}else if(type==="error")tone(145,.22,.04,"sawtooth");else tone(420,.06,.018,"square")}
 function haptic(type){sfx(type);if(tg&&tg.HapticFeedback){if(type==="success"||type==="error")tg.HapticFeedback.notificationOccurred(type);else tg.HapticFeedback.impactOccurred(type||"light")}}
 function toast(msg){var el=$("#toast");el.textContent=msg;el.classList.add("show");setTimeout(function(){el.classList.remove("show")},1900)}
+function tr(key){return window.FeraI18n?window.FeraI18n.t(key):key}
 async function api(path,options){options=options||{};options.headers=Object.assign({"Content-Type":"application/json","X-Telegram-Init-Data":initData},options.headers||{});try{var r=await fetch(path,options);if(!r.ok)throw new Error();return await r.json()}catch(e){return null}}
 function showView(name){
   $$(".view").forEach(function(v){v.classList.remove("active")});
@@ -46,10 +47,24 @@ function showView(name){
 }
 $$(".nav-btn").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});
 $("#backBtn").onclick=function(){if(reflexTimer)clearTimeout(reflexTimer);if(challengeTimer)clearInterval(challengeTimer);currentGame=null;showView("home")};
-$("#soundBtn").onclick=function(){sound=!sound;this.textContent=sound?"♫":"🔇";if(sound&&currentGame)startMusic();else stopMusic();haptic("light");toast(sound?"Musiqa yoqildi":"Musiqa o‘chirildi")};
+$("#soundBtn").onclick=function(){sound=!sound;this.textContent=sound?"♫":"🔇";if(sound&&currentGame)startMusic();else stopMusic();haptic("light");toast(tr(sound?"soundOn":"soundOff"))};
 $$(".game-card").forEach(function(b){b.onclick=function(){openGame(b.dataset.game)}});
 function setGame(title,sub,score){$("#gameTitle").textContent=title;$("#gameSub").textContent=sub;$("#gameScore").textContent=score||"0"}
-async function loadProfile(){var d=await api("/api/profile");if(d&&d.ok){profile=d.user;renderProfile()}}
+async function loadProfile(){
+ var d=await api("/api/profile");
+ if(d&&d.ok){
+  profile=d.user;renderProfile();
+  if(profile.language&&window.FeraI18n)window.FeraI18n.setLanguage(profile.language,false);
+  else if(window.FeraI18n&&window.FeraI18n.getLanguage())saveLanguage(window.FeraI18n.getLanguage(),false);
+ }
+}
+async function saveLanguage(language,showMessage){
+ profile.language=language;
+ var d=await api("/api/language",{method:"POST",body:JSON.stringify({language:language})});
+ if(showMessage!==false)toast(tr("languageSaved"));
+ return d;
+}
+window.onFeraLanguageChange=function(language){saveLanguage(language,true)};
 
 async function loadFriends(){
  var d=await api("/api/referral");
@@ -63,7 +78,7 @@ function formatStars(n){return Number(n||0).toFixed(1).replace(".0","")}
 async function shareInvite(){
  if(!inviteLink)await loadFriends();
  if(!inviteLink)return toast("Mini App’ni Telegram ichidan oching");
- var share="https://t.me/share/url?url="+encodeURIComponent(inviteLink)+"&text="+encodeURIComponent("🎮 Fera GameHub’da men bilan o‘yna! UNO, Mafia, Math, Quiz va yana ko‘p o‘yinlar bor.");
+ var shareTexts={uz:"🎮 Fera GameHub’da men bilan o‘yna! UNO, Mafia, Math, Quiz va yana ko‘p o‘yinlar bor.",ru:"🎮 Играй со мной в Fera GameHub! Здесь есть UNO, Mafia, Math, Quiz и другие игры.",en:"🎮 Play with me in Fera GameHub! Enjoy UNO, Mafia, Math, Quiz and more."};var language=window.FeraI18n?window.FeraI18n.getLanguage():"uz";var share="https://t.me/share/url?url="+encodeURIComponent(inviteLink)+"&text="+encodeURIComponent(shareTexts[language]||shareTexts.uz);
  try{if(tg&&tg.openTelegramLink)tg.openTelegramLink(share);else window.open(share,"_blank")}catch(e){window.open(share,"_blank")}
 }
 $("#inviteBtn").onclick=shareInvite;
