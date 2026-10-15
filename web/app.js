@@ -9,24 +9,45 @@ var sound=true,currentGame=null,reflexTimer=null,challengeTimer=null,inviteLink=
 var $=function(q){return document.querySelector(q)};
 var $$=function(q){return Array.prototype.slice.call(document.querySelectorAll(q))};
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]})}
-function haptic(type){if(tg&&tg.HapticFeedback){if(type==="success"||type==="error")tg.HapticFeedback.notificationOccurred(type);else tg.HapticFeedback.impactOccurred(type||"light")}}
+var musicCtx=null,musicTimer=null,musicStep=0;
+function ensureAudio(){
+ if(musicCtx)return musicCtx;
+ var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;
+ try{musicCtx=new AC();return musicCtx}catch(e){return null}
+}
+function tone(freq,duration,volume,type){
+ var ctx=ensureAudio();if(!ctx||!sound)return;
+ try{var osc=ctx.createOscillator(),gain=ctx.createGain(),now=ctx.currentTime;osc.type=type||"sine";osc.frequency.setValueAtTime(freq,now);gain.gain.setValueAtTime(0.0001,now);gain.gain.exponentialRampToValueAtTime(volume||0.025,now+0.02);gain.gain.exponentialRampToValueAtTime(0.0001,now+duration);osc.connect(gain);gain.connect(ctx.destination);osc.start(now);osc.stop(now+duration+.03)}catch(e){}
+}
+function musicBeat(){
+ if(!sound||!currentGame){musicTimer=null;return}
+ var notes=[220,277.18,329.63,440,329.63,277.18,246.94,329.63];
+ tone(notes[musicStep%notes.length],.22,.018,musicStep%4===0?"triangle":"sine");
+ if(musicStep%4===0)tone(110,.16,.012,"triangle");
+ musicStep++;musicTimer=setTimeout(musicBeat,270);
+}
+function startMusic(){if(!sound)return;var ctx=ensureAudio();if(ctx&&ctx.state==="suspended")ctx.resume().catch(function(){});if(!musicTimer)musicBeat()}
+function stopMusic(){if(musicTimer)clearTimeout(musicTimer);musicTimer=null;musicStep=0}
+function sfx(type){if(type==="success"){tone(523,.12,.045,"sine");setTimeout(function(){tone(784,.18,.04,"sine")},90)}else if(type==="error")tone(145,.22,.04,"sawtooth");else tone(420,.06,.018,"square")}
+function haptic(type){sfx(type);if(tg&&tg.HapticFeedback){if(type==="success"||type==="error")tg.HapticFeedback.notificationOccurred(type);else tg.HapticFeedback.impactOccurred(type||"light")}}
 function toast(msg){var el=$("#toast");el.textContent=msg;el.classList.add("show");setTimeout(function(){el.classList.remove("show")},1900)}
 async function api(path,options){options=options||{};options.headers=Object.assign({"Content-Type":"application/json","X-Telegram-Init-Data":initData},options.headers||{});try{var r=await fetch(path,options);if(!r.ok)throw new Error();return await r.json()}catch(e){return null}}
 function showView(name){
-  $$(".view").forEach(function(v){v.classList.remove("active")});
-  $$(".nav-btn").forEach(function(v){v.classList.toggle("active",v.dataset.view===name)});
+  $$$(".view").forEach(function(v){v.classList.remove("active")});
+  $$$(".nav-btn").forEach(function(v){v.classList.toggle("active",v.dataset.view===name)});
   $("#gameView").classList.toggle("active",name==="game");
   if(name!=="game")$("#"+name+"View").classList.add("active");
   $(".bottom-nav").style.display=name==="game"?"none":"flex";
+  if(name!=="game")stopMusic();
   if(name==="leader")loadLeaderboard();
   if(name==="friends")loadFriends();
   if(name==="profile")renderProfile();
   window.scrollTo(0,0);
 }
-$$(".nav-btn").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});
+$$$(".nav-btn").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});
 $("#backBtn").onclick=function(){if(reflexTimer)clearTimeout(reflexTimer);if(challengeTimer)clearInterval(challengeTimer);currentGame=null;showView("home")};
-$("#soundBtn").onclick=function(){sound=!sound;this.textContent=sound?"♫":"×";toast(sound?"Ovoz yoqildi":"Ovoz o‘chirildi")};
-$$(".game-card").forEach(function(b){b.onclick=function(){openGame(b.dataset.game)}});
+$("#soundBtn").onclick=function(){sound=!sound;this.textContent=sound?"♫":"🔇";if(sound&&currentGame)startMusic();else stopMusic();haptic("light");toast(sound?"Musiqa yoqildi":"Musiqa o‘chirildi")};
+$$$(".game-card").forEach(function(b){b.onclick=function(){openGame(b.dataset.game)}});
 function setGame(title,sub,score){$("#gameTitle").textContent=title;$("#gameSub").textContent=sub;$("#gameScore").textContent=score||"0"}
 async function loadProfile(){var d=await api("/api/profile");if(d&&d.ok){profile=d.user;renderProfile()}}
 
@@ -66,7 +87,7 @@ async function loadLeaderboard(){
  $("#rankList").innerHTML=rows.slice(3,20).map(function(x,i){return'<div class="rank-row"><span>'+(i+4)+'</span><div class="rank-avatar">'+esc((x.name||"?").charAt(0))+'</div><div><h4>'+esc(x.name)+'</h4><p>'+(x.wins||0)+' g‘alaba</p></div><b class="rank-score">'+(x.score||0)+'</b></div>'}).join("")||'<div class="loader">Hali boshqa o‘yinchilar yo‘q</div>';
 }
 function openGame(g){
- currentGame=g;if(challengeTimer)clearInterval(challengeTimer);showView("game");
+ currentGame=g;if(challengeTimer)clearInterval(challengeTimer);stopMusic();showView("game");startMusic();
  var games={uno:startUno,mafia:startMafia,rps:startRps,reflex:startReflex,math:startMath,quiz:startQuiz,ttt:startTtt,memory:startMemory,guess:startGuess};
  if(games[g])games[g]();else{toast("O‘yin topilmadi");showView("home")}
 }
@@ -82,11 +103,11 @@ function unoCard(card,index,enabled){return'<button class="uno-card-btn '+UCOL[c
 function renderUno(){
  var top=UNO.discard[UNO.discard.length-1];
  $("#gameStage").innerHTML='<div class="uno-board"><div class="opponents">'+[1,2,3].map(function(p){return'<div class="opponent '+(UNO.turn===p?"turning":"")+'"><div class="face">'+["🤖","👾","🦾"][p-1]+'</div><b>BOT '+p+'</b><span>'+UNO.hands[p].length+' karta</span></div>'}).join("")+'</div><div class="uno-center"><div class="uno-pile uno-deck">UNO<br>'+UNO.deck.length+'</div><div class="uno-pile '+UCOL[top.c]+'">'+esc(top.v)+'</div><div class="uno-log">'+esc(UNO.log)+'</div></div><div class="uno-actions"><span>'+(UNO.turn===0?"Sizning yurishingiz":"Bot o‘ylayapti…")+'</span><button class="btn secondary" id="unoDraw" '+(UNO.turn!==0?"disabled":"")+'>+ KARTA OLISH</button></div><div class="uno-hand">'+UNO.hands[0].map(function(c,i){return unoCard(c,i,UNO.turn===0&&legalUno(c))}).join("")+'</div></div>';
- $$("#gameStage [data-u]").forEach(function(b){b.onclick=function(){playerUno(Number(b.dataset.u))}});
+ $$$("#gameStage [data-u]").forEach(function(b){b.onclick=function(){playerUno(Number(b.dataset.u))}});
  var dr=$("#unoDraw");if(dr)dr.onclick=function(){drawUno(0);UNO.log="Siz karta oldingiz";UNO.turn=nextUno(0,1);renderUno();setTimeout(botUno,650)};
 }
 function nextUno(p,step){return(p+UNO.dir*(step||1)+4)%4}
-function playerUno(i){var c=UNO.hands[0][i];if(c.c==="W"){haptic("light");$("#gameStage").innerHTML='<div class="game-result"><div class="big">🌈</div><h2>Rangni tanlang</h2><div class="color-pick">'+["R","Y","G","B"].map(function(x){return'<button class="'+UCOL[x]+'" data-color="'+x+'"></button>'}).join("")+'</div></div>';$$("[data-color]").forEach(function(b){b.onclick=function(){commitUno(0,i,b.dataset.color)}})}else commitUno(0,i,c.c)}
+function playerUno(i){var c=UNO.hands[0][i];if(c.c==="W"){haptic("light");$("#gameStage").innerHTML='<div class="game-result"><div class="big">🌈</div><h2>Rangni tanlang</h2><div class="color-pick">'+["R","Y","G","B"].map(function(x){return'<button class="'+UCOL[x]+'" data-color="'+x+'"></button>'}).join("")+'</div></div>';$$$("[data-color]").forEach(function(b){b.onclick=function(){commitUno(0,i,b.dataset.color)}})}else commitUno(0,i,c.c)}
 function commitUno(p,i,color){
  var card=UNO.hands[p].splice(i,1)[0];UNO.discard.push(card);UNO.color=card.c==="W"?color:card.c;UNO.log=(p===0?"Siz":"Bot "+p)+" "+card.v+" tashladi";
  if(!UNO.hands[p].length)return endUno(p===0);
@@ -114,7 +135,7 @@ function renderMafia(){
  var night=MAF.phase==="night";var selectable=MAF.alive.map(function(x,i){return x&&i!==0?i:null}).filter(function(x){return x!=null});
  var title=night?"🌙 Tun":"☀️ "+MAF.day+"-kun";var sub=night?(role==="Mafiya"?"Kimni yo‘q qilasiz?":role==="Doktor"?"Kimni qutqarasiz?":role==="Detektiv"?"Kimni tekshirasiz?":"Shahar uxlamoqda…"):"Kim mafiyachi? Ovoz bering.";
  $("#gameStage").innerHTML='<div class="mafia-scene"><div class="phase-banner"><b>'+title+'</b><span>'+sub+'</span></div><div class="players-grid">'+MAF.alive.map(function(alive,i){if(i===0)return'<div class="player-tile"><div class="face">'+ROLEINFO[role][0]+'</div><b>SIZ</b></div>';return'<button class="player-tile '+(!alive?"dead ":"")+(alive?"selectable":"")+'" '+(alive?'data-m="'+i+'"':'')+'><div class="face">'+["🤵","👩","🧔","👨","👩‍🦰","🧑"][i-1]+'</div><b>BOT '+i+'</b></button>'}).join("")+'</div><div class="mafia-log">'+esc(MAF.log)+'</div><div class="mafia-action" id="mafiaAction"></div></div>';
- var canChoose=!night||role!=="Fuqaro";if(canChoose)$$("[data-m]").forEach(function(b){b.onclick=function(){if(night)mafiaNight(Number(b.dataset.m));else mafiaVote(Number(b.dataset.m))}});
+ var canChoose=!night||role!=="Fuqaro";if(canChoose)$$$("[data-m]").forEach(function(b){b.onclick=function(){if(night)mafiaNight(Number(b.dataset.m));else mafiaVote(Number(b.dataset.m))}});
  else $("#mafiaAction").innerHTML='<button class="btn" id="waitNight">TONGNI KUTISH</button>';
  var w=$("#waitNight");if(w)w.onclick=function(){mafiaNight(null)};
 }
@@ -136,7 +157,7 @@ function mafiaWinner(){var m=0,c=0;MAF.alive.forEach(function(x,i){if(x){if(MAF.
 function endMafia(side){var playerSide=MAF.roles[0]==="Mafiya"?"Mafiya":"Shahar",win=side===playerSide;haptic(win?"success":"error");record("mafia",win,win?180:20);$("#gameStage").innerHTML='<div class="game-result"><div class="big">'+(win?"🏆":"🎭")+'</div><h2>'+side+" yutdi"+'</h2><p>'+(win?"+180 ball. Sirni ajoyib saqladingiz!":"Bu shaharda hech kimga ishonib bo‘lmaydi…")+'</p><button class="btn" id="againM">YANA O‘YNASH</button></div>';$("#againM").onclick=startMafia}
 
 /* RPS */
-function startRps(){setGame("RPS BATTLE","TEZKOR JANG","BO3");$("#gameStage").innerHTML='<div class="rps-arena"><span class="eyebrow">TANLOVINGIZ</span><div class="rps-battle"><div class="rps-choice" id="myRps">?</div><b class="rps-vs">VS</b><div class="rps-choice" id="botRps">🤖</div></div><div class="rps-buttons">'+["✊","✌️","🖐️"].map(function(x,i){return'<button data-rps="'+i+'">'+x+'</button>'}).join("")+'</div><p class="uno-log" id="rpsText">Tosh, qaychi yoki qog‘ozni tanlang</p></div>';$$("[data-rps]").forEach(function(b){b.onclick=function(){playRps(Number(b.dataset.rps))}})}
+function startRps(){setGame("RPS BATTLE","TEZKOR JANG","BO3");$("#gameStage").innerHTML='<div class="rps-arena"><span class="eyebrow">TANLOVINGIZ</span><div class="rps-battle"><div class="rps-choice" id="myRps">?</div><b class="rps-vs">VS</b><div class="rps-choice" id="botRps">🤖</div></div><div class="rps-buttons">'+["✊","✌️","🖐️"].map(function(x,i){return'<button data-rps="'+i+'">'+x+'</button>'}).join("")+'</div><p class="uno-log" id="rpsText">Tosh, qaychi yoki qog‘ozni tanlang</p></div>';$$$("[data-rps]").forEach(function(b){b.onclick=function(){playRps(Number(b.dataset.rps))}})}
 function playRps(me){var icons=["✊","✌️","🖐️"],bot=Math.floor(Math.random()*3),win=(me-bot+3)%3===2,draw=me===bot;$("#myRps").textContent=icons[me];$("#botRps").textContent=icons[bot];$("#rpsText").textContent=draw?"DURRANG":win?"SIZ YUTDINGIZ! +40 BALL":"BOT YUTDI";haptic(draw?"light":win?"success":"error");record("rps",win,win?40:0);setTimeout(function(){var a=document.createElement("button");a.className="btn";a.textContent="YANA";a.onclick=startRps;$("#rpsText").after(a)},500)}
 
 /* REFLEX */
@@ -148,7 +169,7 @@ var TTT=null;
 function startTtt(){setGame("TIC TAC TOE","BOTGA QARSHI","SIZ: X");TTT={board:["","","","","","","","",""],turn:true,done:false};renderTtt()}
 function renderTtt(){
  $("#gameStage").innerHTML='<div class="ttt-wrap"><div class="ttt-status">'+(TTT.done?"O‘yin tugadi":TTT.turn?"Sizning yurishingiz":"Bot o‘ylayapti…")+'</div><div class="ttt-board">'+TTT.board.map(function(x,i){return'<button data-cell="'+i+'" '+(x||!TTT.turn||TTT.done?"disabled":"")+'>'+x+'</button>'}).join("")+'</div><p class="uno-log">Uchta belgini bir qatorga joylang</p></div>';
- $("[data-cell]").forEach(function(b){b.onclick=function(){tttMove(Number(b.dataset.cell))}});
+ $$("[data-cell]").forEach(function(b){b.onclick=function(){tttMove(Number(b.dataset.cell))}});
 }
 function tttWinner(){
  var lines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
@@ -171,7 +192,7 @@ function startMemory(){setGame("MEMORY","JUFTLIKLARNI TOPING","0 / 6");var cards
 function renderMemory(){
  var found=Object.keys(MEMORY.matched).length/2;$("#gameScore").textContent=found+" / 6";
  $("#gameStage").innerHTML='<div class="memory-wrap"><div class="memory-board">'+MEMORY.cards.map(function(x,i){var shown=MEMORY.open.indexOf(i)>=0||MEMORY.matched[i];return'<button class="'+(shown?"flipped ":"")+(MEMORY.matched[i]?"matched":"")+'" data-memory="'+i+'" '+(MEMORY.lock||MEMORY.matched[i]?"disabled":"")+'><span>'+(shown?x:"?")+'</span></button>'}).join("")+'</div><p class="uno-log">Harakatlar: '+MEMORY.moves+' • Bir xil rasmlarni toping</p></div>';
- $("[data-memory]").forEach(function(b){b.onclick=function(){flipMemory(Number(b.dataset.memory))}});
+ $$("[data-memory]").forEach(function(b){b.onclick=function(){flipMemory(Number(b.dataset.memory))}});
 }
 function flipMemory(i){
  if(MEMORY.lock||MEMORY.matched[i]||MEMORY.open.indexOf(i)>=0)return;MEMORY.open.push(i);haptic("light");renderMemory();
@@ -233,10 +254,10 @@ function nextChallenge(){
   if(locked)return;locked=true;clearInterval(challengeTimer);
   var correct=answer===item.a;
   if(correct){CHALLENGE.correct++;CHALLENGE.score+=CHALLENGE.type==="math"?15:20;haptic("success");if(button)button.classList.add("correct")}
-  else{haptic("error");if(button)button.classList.add("wrong");$("[data-answer]").forEach(function(b){if(b.dataset.answer===item.a)b.classList.add("correct")})}
-  $("[data-answer]").forEach(function(b){b.disabled=true});CHALLENGE.index++;setTimeout(nextChallenge,750);
+  else{haptic("error");if(button)button.classList.add("wrong");$$("[data-answer]").forEach(function(b){if(b.dataset.answer===item.a)b.classList.add("correct")})}
+  $$("[data-answer]").forEach(function(b){b.disabled=true});CHALLENGE.index++;setTimeout(nextChallenge,750);
  }
- $("[data-answer]").forEach(function(b){b.onclick=function(){finish(b.dataset.answer,b)}});
+ $$("[data-answer]").forEach(function(b){b.onclick=function(){finish(b.dataset.answer,b)}});
  var left=100;challengeTimer=setInterval(function(){left-=1;var bar=$("#questionTimer");if(bar)bar.style.transform="scaleX("+(left/100)+")";if(left<=0)finish("",null)},100);
 }
 function endChallenge(){
