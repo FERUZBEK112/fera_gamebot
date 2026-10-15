@@ -1,194 +1,287 @@
-"""Uzbek Telegram game hub. Standard-library-only long polling worker."""
+"""Fera GameHub: Telegram bot + secure Mini App web server."""
+import hashlib
+import hmac
 import json
 import logging
+import mimetypes
 import os
-import pickle
-import random
-import secrets
-import signal
 import sqlite3
+import threading
 import time
+import urllib.parse
 import urllib.request
-from games import Uno, Mafia, COLORS
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
-ROOT = os.getenv('DATA_DIR', './data')
-os.makedirs(ROOT, exist_ok=True)
-db = sqlite3.connect(os.path.join(ROOT,'games.db'))
-db.executescript('''
-CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, name TEXT, wins INTEGER DEFAULT 0, played INTEGER DEFAULT 0);
-CREATE TABLE IF NOT EXISTS sessions(id INTEGER PRIMARY KEY, state BLOB);
-CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value INTEGER);
-''')
-TOKEN = os.getenv('BOT_TOKEN','')
-MENU = {'keyboard': [[{'text':'🎮 O‘yinlar'},{'text':'👤 Kabinet'}],[{'text':'🏆 Reyting'},{'text':'📖 Qoidalar'}]], 'resize_keyboard':True}
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+TOKEN = os.getenv("BOT_TOKEN", "")
+ADMIN_ID = os.getenv("ADMIN_ID", "")
+APP_URL = os.getenv("APP_URL", "").rstrip("/")
+PORT = int(os.getenv("PORT", "8080"))
+DATA_DIR = Path(os.getenv("DATA_DIR", "./data"))
+WEB_DIR = Path(__file__).parent / "web"
+DB_PATH = DATA_DIR / "games.db"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+ALLOWED_GAMES = {"uno": 200, "mafia": 250, "rps": 60, "reflex": 350}
 
-def api(method, **data):
-    req = urllib.request.Request('https://api.telegram.org/bot'+TOKEN+'/'+method,
-        json.dumps(data).encode(), {'Content-Type':'application/json'})
-    with urllib.request.urlopen(req,timeout=40) as r: result=json.load(r)
-    if not result.get('ok'): raise RuntimeError('Telegram API rejected '+method)
-    return result['result']
 
-def send(chat,text,buttons=None):
-    return api('sendMessage',chat_id=chat,text=text,reply_markup={'inline_keyboard':buttons} if buttons is not None else MENU)
+def db_connect():
+    con = sqlite3.connect(DB_PATH, timeout=20)
+    con.row_factory = sqlite3.Row
+    return con
 
-def button(text,data): return {'text':text,'callback_data':data}
 
-def save(uid,s):
-    db.execute('INSERT OR REPLACE INTO sessions VALUES(?,?)',(uid,pickle.dumps(s)))
-    db.commit()
+def init_db():
+    with db_connect() as con:
+        con.execute("""CREATE TABLE IF NOT EXISTS users(
+            id INTEGER PRIMARY KEY, name TEXT NOT NULL DEFAULT 'O‘yinchi',
+            wins INTEGER NOT NULL DEFAULT 0, played INTEGER NOT NULL DEFAULT 0
+        )""")
+        columns = {row["name"] for row in con.execute("PRAGMA table_info(users)")}
+        if "username" not in columns:
+            con.execute("ALTER TABLE users ADD COLUMN username TEXT NOT NULL DEFAULT ''")
+        if "score" not in columns:
+            con.execute("ALTER TABLE users ADD COLUMN score INTEGER NOT NULL DEFAULT 0")
+        con.execute("""CREATE TABLE IF NOT EXISTS results(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+            game TEXT NOT NULL, won INTEGER NOT NULL, score INTEGER NOT NULL,
+            created_at INTEGER NOT NULL
+        )""")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_results_user ON results(user_id)")
+        con.commit()
 
-def load(uid):
-    row=db.execute('SELECT state FROM sessions WHERE id=?',(uid,)).fetchone()
-    return pickle.loads(row[0]) if row else None
 
-def finish(uid,s,won):
-    if s.get('scored'): return
-    s['scored']=True
-    db.execute('UPDATE users SET wins=wins+?,played=played+1 WHERE id=?',(int(won),uid))
+def telegram_api(method, **data):
+    request = urllib.request.Request(
+        "https://api.telegram.org/bot" + TOKEN + "/" + method,
+        json.dumps(data, ensure_ascii=False).encode(),
+        {"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(request, timeout=40) as response:
+        payload = json.load(response)
+    if not payload.get("ok"):
+        raise RuntimeError("Telegram rejected " + method)
+    return payload["result"]
 
-def lobby(chat):
-    send(chat,'🎮 GAME HUB\n\nRaqiblar tayyor! O‘yinni tanlang:',[
-        [button('🃏 UNO • 3 raqib','new:uno')],
-        [button('🎭 Mafia • 6 raqib','new:mafia')],
-        [button('✊ Tosh · qaychi · qog‘oz','new:rps')]])
 
-def render(uid,chat,s):
-    s['rev']=secrets.token_hex(4)
-    tag=s['rev']
-    g=s['game']; rows=[]
-    def b(text,action): return button(text,tag+':'+action)
-    if s['kind']=='uno':
-        text='🃏 UNO\nStol: '+''.join(g.discard[-1])+' • Faol rang: '+g.color+'\n'
-        text+=' | '.join(f'Bot {p}: {len(g.hands[p])} ta' for p in range(1,4))+'\n\n'
-        text+='\n'.join(g.log[-10:])+'\n'
-        if g.winner is not None:
-            text+='\n🏁 '+('Siz yutdingiz! 🎉' if g.winner==0 else f'Bot {g.winner} yutdi.')
-            finish(uid,s,g.winner==0)
-        else:
-            text+='\nSizning kartalaringiz: '+ ' '.join(''.join(c) for c in g.hands[0])
-            if s.get('wild') is not None:
-                rows=[[b(c,'color:'+str(i)) for i,c in enumerate(COLORS)]]
-            else:
-                cards=[b(''.join(c),'play:'+str(i)) for i,c in enumerate(g.hands[0]) if g.legal(0,i)]
-                rows=[cards[i:i+4] for i in range(0,len(cards),4)]
-                rows.append([b('📥 Karta olish va yurishni yakunlash','draw')])
-    elif s['kind']=='mafia':
-        role=g.roles[0]
-        text=f'🎭 MAFIA • {g.day}-kun\nSizning rolingiz: {role}\n'
-        if role=='Mafiya': text+='Sherigingiz: '+', '.join(g.name(p) for p in range(1,7) if g.roles[p]=='Mafiya')+'\n'
-        text+='Tiriklar: '+', '.join(g.name(p) for p in g.alive)+'\n\n'+'\n'.join(g.log[-9:])
-        if g.winner:
-            text+='\n\n🏁 '+g.winner+' g‘alaba qozondi!'
-            finish(uid,s,(role=='Mafiya')==(g.winner=='Mafiya'))
-        elif 0 not in g.alive:
-            text+='\n\nSiz o‘yindan chiqdingiz. Kuzatishni davom ettiring.'
-            rows=[[b('⏩ Keyingi bosqich','advance')]]
-        elif g.phase=='day':
-            text+='\n\n☀️ Kimga ovoz berasiz? Botlar mustaqil ovoz beradi.'
-            rows=[[b(g.name(p),'vote:'+str(p))] for p in g.targets()]
-        elif role=='Fuqaro':
-            text+='\n\n🌙 Shahar uxlamoqda...'
-            rows=[[b('☀️ Tongni kutish','night')]]
-        else:
-            text+='\n\n🌙 '+{'Mafiya':'Kimni yo‘q qilasiz?','Doktor':'Kimni qutqarasiz?','Detektiv':'Kimni tekshirasiz?'}[role]
-            rows=[[b(g.name(p),'night:'+str(p))] for p in g.targets()]
-    else:
-        text='✊ Tosh · qaychi · qog‘oz\nTanlovingizni bosing!'
-        if s.get('result'):
-            text=s['result']
-        else: rows=[[b(c,'rps:'+str(i)) for i,c in enumerate(['✊','✌️','🖐'])]]
-    rows.append([button('🎮 O‘yin tanlash','lobby')])
-    save(uid,s)
-    send(chat,text,rows)
+def upsert_user(user):
+    uid = int(user["id"])
+    name = (str(user.get("first_name", "")) + (" " + str(user.get("last_name", "")) if user.get("last_name") else "")).strip()[:80] or "O‘yinchi"
+    username = ("@" + str(user["username"]))[:80] if user.get("username") else ""
+    with db_connect() as con:
+        con.execute(
+            """INSERT INTO users(id,name,username) VALUES(?,?,?)
+               ON CONFLICT(id) DO UPDATE SET name=excluded.name,username=excluded.username""",
+            (uid, name, username),
+        )
+        con.commit()
+    return uid
 
-def callback(q):
-    uid=q['from']['id']; chat=q['message']['chat']['id']; data=q.get('data','')
-    api('answerCallbackQuery',callback_query_id=q['id'])
-    if data=='lobby': return lobby(chat)
-    if data.startswith('new:'):
-        kind=data.split(':')[1]
-        if kind not in ['uno','mafia','rps']: return
-        s={'kind':kind,'game':Uno() if kind=='uno' else Mafia() if kind=='mafia' else None}
-        return render(uid,chat,s)
-    s=load(uid)
-    parts=data.split(':')
-    if not s or parts[0]!=s['rev']:
-        return send(chat,'Bu tugma eskirgan. Eng oxirgi o‘yin xabaridagi tugmadan foydalaning.')
-    action=parts[1]; n=int(parts[2]) if len(parts)>2 else None; g=s['game']
-    if s.get('scored'): return lobby(chat)
-    if s['kind']=='uno':
-        if action=='play':
-            if n is None or not 0<=n<len(g.hands[0]) or not g.legal(0,n): raise ValueError('Yaroqsiz karta.')
-            if g.hands[0][n][0]=='🌈': s['wild']=n
-            else: g.play(n); g.bots()
-        elif action=='color' and s.get('wild') is not None and n in range(4):
-            g.play(s.pop('wild'),COLORS[n]); g.bots()
-        elif action=='draw' and s.get('wild') is None:
-            g.draw(0); g.turn=(g.turn+g.direction)%4; g.bots()
-    elif s['kind']=='mafia':
-        if n is not None and n not in g.targets(): raise ValueError('Yaroqsiz nishon.')
-        if action=='night' and (g.roles[0]=='Fuqaro' or n is not None): g.night(n)
-        elif action=='vote': g.vote(n)
-        elif action=='advance' and 0 not in g.alive:
-            if g.phase=='night': g.night()
-            else: g.vote()
-    elif action=='rps' and n in range(3):
-        bot=random.randrange(3); labels=['✊','✌️','🖐']
-        won=(n-bot)%3==2
-        result='🤝 Durrang!' if n==bot else '🎉 Siz yutdingiz!' if won else '🤖 Bot yutdi!'
-        s['result']=f'Siz: {labels[n]} • Bot: {labels[bot]}\n{result}'
-        finish(uid,s,won)
-    render(uid,chat,s)
 
-def handle(update):
-    q=update.get('callback_query'); m=update.get('message') or (q or {}).get('message')
-    if not m: return
-    if m['chat']['type']!='private':
-        if update.get('message'): send(m['chat']['id'],'O‘ynash uchun botning shaxsiy chatiga yozing.')
+def validate_init_data(raw):
+    if not TOKEN or not raw or len(raw) > 8192:
+        return None
+    try:
+        pairs = dict(urllib.parse.parse_qsl(raw, keep_blank_values=True))
+        received_hash = pairs.pop("hash")
+        auth_date = int(pairs.get("auth_date", "0"))
+        if abs(int(time.time()) - auth_date) > 86400:
+            return None
+        data_check = "\n".join(key + "=" + pairs[key] for key in sorted(pairs))
+        secret = hmac.new(b"WebAppData", TOKEN.encode(), hashlib.sha256).digest()
+        calculated = hmac.new(secret, data_check.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(received_hash, calculated):
+            return None
+        user = json.loads(pairs.get("user", "{}"))
+        if not isinstance(user, dict) or not user.get("id"):
+            return None
+        return user
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+
+class Handler(BaseHTTPRequestHandler):
+    server_version = "FeraGameHub/2.0"
+
+    def log_message(self, fmt, *args):
+        logging.info("web %s", fmt % args)
+
+    def send_json(self, status, payload):
+        body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def current_user(self):
+        return validate_init_data(self.headers.get("X-Telegram-Init-Data", ""))
+
+    def do_GET(self):
+        path = urllib.parse.urlparse(self.path).path
+        if path == "/health":
+            return self.send_json(200, {"ok": True, "service": "fera-gamehub"})
+        if path == "/api/profile":
+            user = self.current_user()
+            if not user:
+                return self.send_json(401, {"ok": False})
+            uid = upsert_user(user)
+            with db_connect() as con:
+                row = con.execute("SELECT id,name,username,score,wins,played FROM users WHERE id=?", (uid,)).fetchone()
+            return self.send_json(200, {"ok": True, "user": dict(row)})
+        if path == "/api/leaderboard":
+            user = self.current_user()
+            if not user:
+                return self.send_json(401, {"ok": False})
+            upsert_user(user)
+            with db_connect() as con:
+                rows = con.execute(
+                    "SELECT name,username,score,wins,played FROM users ORDER BY score DESC,wins DESC,played ASC LIMIT 20"
+                ).fetchall()
+            return self.send_json(200, {"ok": True, "users": [dict(row) for row in rows]})
+        return self.serve_static(path)
+
+    def do_POST(self):
+        path = urllib.parse.urlparse(self.path).path
+        if path != "/api/result":
+            return self.send_json(404, {"ok": False})
+        user = self.current_user()
+        if not user:
+            return self.send_json(401, {"ok": False})
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if length < 2 or length > 4096:
+                raise ValueError
+            payload = json.loads(self.rfile.read(length))
+            game = str(payload.get("game", ""))
+            won = bool(payload.get("won", False))
+            score = int(payload.get("score", 0))
+            if game not in ALLOWED_GAMES:
+                raise ValueError
+            score = max(0, min(score, ALLOWED_GAMES[game]))
+        except (ValueError, TypeError, json.JSONDecodeError):
+            return self.send_json(400, {"ok": False, "error": "invalid_result"})
+        uid = upsert_user(user)
+        now = int(time.time())
+        with db_connect() as con:
+            recent = con.execute(
+                "SELECT created_at FROM results WHERE user_id=? AND game=? ORDER BY id DESC LIMIT 1",
+                (uid, game),
+            ).fetchone()
+            if recent and now - int(recent["created_at"]) < 2:
+                return self.send_json(429, {"ok": False, "error": "too_fast"})
+            con.execute(
+                "INSERT INTO results(user_id,game,won,score,created_at) VALUES(?,?,?,?,?)",
+                (uid, game, int(won), score, now),
+            )
+            con.execute(
+                "UPDATE users SET score=score+?,wins=wins+?,played=played+1 WHERE id=?",
+                (score, int(won), uid),
+            )
+            row = con.execute("SELECT score,wins,played FROM users WHERE id=?", (uid,)).fetchone()
+            con.commit()
+        return self.send_json(200, {"ok": True, "stats": dict(row)})
+
+    def serve_static(self, path):
+        requested = "index.html" if path in ("", "/") else path.lstrip("/")
+        candidate = (WEB_DIR / requested).resolve()
+        try:
+            candidate.relative_to(WEB_DIR.resolve())
+        except ValueError:
+            return self.send_json(403, {"ok": False})
+        if not candidate.is_file():
+            candidate = WEB_DIR / "index.html"
+        body = candidate.read_bytes()
+        content_type = mimetypes.guess_type(candidate.name)[0] or "application/octet-stream"
+        self.send_response(200)
+        self.send_header("Content-Type", content_type + ("; charset=utf-8" if content_type.startswith(("text/", "application/javascript")) else ""))
+        self.send_header("Cache-Control", "no-cache" if candidate.name == "index.html" else "public,max-age=3600")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+
+def start_message(chat_id, first_name="O‘yinchi"):
+    if not APP_URL:
+        return telegram_api("sendMessage", chat_id=chat_id, text="GameHub hozir sozlanmoqda. Birozdan keyin /start bosing.")
+    keyboard = {"inline_keyboard": [[{"text": "🎮 OPEN GAMEHUB", "web_app": {"url": APP_URL}}]]}
+    text = (
+        "🎮 FERA GAMEHUB\n\n"
+        "Salom, " + first_name + "! UNO, Mafia va boshqa o‘yinlar yangi Mini App ichida.\n\n"
+        "Pastdagi tugmani bosing 👇"
+    )
+    return telegram_api("sendMessage", chat_id=chat_id, text=text, reply_markup=keyboard)
+
+
+def handle_update(update):
+    message = update.get("message")
+    if not message or message.get("chat", {}).get("type") != "private":
         return
-    user=(q or m).get('from',{}); uid=user.get('id'); chat=m['chat']['id']
-    if not uid: return
-    db.execute('INSERT INTO users(id,name) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name', (uid,user.get('first_name','O‘yinchi')[:40]))
-    db.commit()
-    if q: return callback(q)
-    text=m.get('text','')
-    if text in ['/start','🎮 O‘yinlar']: return lobby(chat)
-    if text=='👤 Kabinet':
-        name,wins,played=db.execute('SELECT name,wins,played FROM users WHERE id=?',(uid,)).fetchone()
-        return send(chat,f'👤 {name}\n🆔 {uid}\n🎮 Yakunlangan: {played}\n🏆 G‘alabalar: {wins}\n⭐ Ball: {wins*10}')
-    if text=='🏆 Reyting':
-        rows=db.execute('SELECT name,wins FROM users ORDER BY wins DESC,played ASC LIMIT 10').fetchall()
-        return send(chat,'🏆 Eng yaxshi o‘yinchilar\n\n'+'\n'.join(f'{i+1}. {n} — {w*10} ball' for i,(n,w) in enumerate(rows)))
-    if text=='/admin' and str(uid)==os.getenv('ADMIN_ID'):
-        count=db.execute('SELECT COUNT(*) FROM users').fetchone()[0]
-        return send(chat,f'🛠 Admin\nFoydalanuvchilar: {count}')
-    if text=='/resume':
-        s=load(uid)
-        return render(uid,chat,s) if s else lobby(chat)
-    send(chat,'📖 Qoidalar\n\n🃏 UNO: rang yoki belgi mos kartani tashlang. +2/+4 keyingi raqibni karta olishga majbur qiladi; ustma-ust yig‘ilmaydi. +4 faqat faol rang qolmaganda. Karta olsangiz yurish tugaydi. UNO avtomatik aytiladi. Birinchi bo‘lib kartasini tugatgan yutadi.\n\n🎭 Mafia: siz va 6 bot. 2 mafiyachi, doktor, detektiv, 3 fuqaro. Tunda rol bo‘yicha harakat, kunduzi ovoz berish. Teng ovozda hech kim chiqarilmaydi. Mafiya soni shaharliklarga tenglashsa mafiyachilar yutadi. Botlar oddiy tasodifiy strategiyada o‘ynaydi.\n\n✊ Tosh qaychini, qaychi qog‘ozni, qog‘oz toshni yengadi.\n\n/resume — o‘yinni davom ettirish. Yangi o‘yin boshlasangiz oldingisi almashtiriladi. Ballar faqat o‘yin uchun.')
+    user = message.get("from", {})
+    if user.get("id"):
+        upsert_user(user)
+    text = message.get("text", "")
+    chat_id = message["chat"]["id"]
+    if text in ("/start", "/games"):
+        start_message(chat_id, user.get("first_name", "O‘yinchi"))
+    elif text == "/admin" and str(user.get("id")) == ADMIN_ID:
+        with db_connect() as con:
+            users = con.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
+            games = con.execute("SELECT COUNT(*) AS c FROM results").fetchone()["c"]
+        telegram_api("sendMessage", chat_id=chat_id, text="🛠 Admin\n\nFoydalanuvchilar: %s\nO‘yinlar: %s" % (users, games))
+    else:
+        start_message(chat_id, user.get("first_name", "O‘yinchi"))
 
-def main():
+
+def bot_loop():
     if not TOKEN:
-        logging.info('BOT_TOKEN kiritilishini kutmoqda. Railway Variables ga BOT_TOKEN qo‘shing.')
-        while True: time.sleep(30)
-    api('getMe')
-    api('deleteWebhook',drop_pending_updates=False)
-    api('setMyCommands',commands=[{'command':'start','description':'O‘yinlar menyusi'},{'command':'resume','description':'O‘yinni davom ettirish'}])
-    row=db.execute("SELECT value FROM meta WHERE key='offset'").fetchone(); offset=row[0] if row else 0
-    logging.info('GameHub started')
+        logging.warning("BOT_TOKEN missing; web-only mode")
+        return
+    try:
+        me = telegram_api("getMe")
+        telegram_api("deleteWebhook", drop_pending_updates=False)
+        telegram_api(
+            "setMyCommands",
+            commands=[
+                {"command": "start", "description": "GameHub’ni ochish"},
+                {"command": "games", "description": "O‘yinlar"},
+            ],
+        )
+        if APP_URL:
+            telegram_api(
+                "setChatMenuButton",
+                menu_button={"type": "web_app", "text": "🎮 Open GameHub", "web_app": {"url": APP_URL}},
+            )
+        logging.info("Telegram bot ready: @%s", me.get("username", "bot"))
+    except Exception as exc:
+        logging.error("Telegram setup failed: %s", type(exc).__name__)
+        return
+    offset = 0
     while True:
         try:
-            updates=api('getUpdates',offset=offset,timeout=25,allowed_updates=['message','callback_query'])
-            for u in updates:
-                try: handle(u)
-                except Exception as e:
-                    logging.error('Update failed: %s',type(e).__name__)
-                offset=u['update_id']+1
-                db.execute("INSERT OR REPLACE INTO meta VALUES('offset',?)",(offset,)); db.commit()
-        except Exception as e:
-            logging.error('Polling failed: %s',type(e).__name__)
+            updates = telegram_api("getUpdates", offset=offset, timeout=25, allowed_updates=["message"])
+            for update in updates:
+                try:
+                    handle_update(update)
+                except Exception as exc:
+                    logging.error("Update failed: %s", type(exc).__name__)
+                offset = update["update_id"] + 1
+        except Exception as exc:
+            logging.error("Polling retry: %s", type(exc).__name__)
             time.sleep(5)
 
-if __name__=='__main__': main()
+
+def main():
+    init_db()
+    threading.Thread(target=bot_loop, daemon=True, name="telegram-polling").start()
+    server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    logging.info("Fera GameHub web server listening on %s", PORT)
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()
