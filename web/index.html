@@ -37,7 +37,24 @@
           </button>
           <button class="game-card small rps-card" data-game="rps"><div class="mini-icon">✊</div><h3>RPS BATTLE</h3><p>Tezkor jang</p></button>
           <button class="game-card small reflex-card" data-game="reflex"><div class="mini-icon">⚡</div><h3>REFLEX</h3><p>Reaksiyangni sina</p></button>
+          <button class="game-card small math-card" data-game="math"><div class="mini-icon">➗</div><h3>MATH DUEL</h3><p>10 ta tezkor misol</p></button>
+          <button class="game-card small quiz-card" data-game="quiz"><div class="mini-icon">🧠</div><h3>QUIZ BLITZ</h3><p>Bilimingni tekshir</p></button>
         </div>
+      </section>
+
+      <section id="friendsView" class="view">
+        <div class="page-head"><span class="eyebrow">BONUS</span><h1>👥 Do‘stlar</h1><p>Do‘stlaringizni chaqiring va har biri uchun mukofot oling</p></div>
+        <div class="invite-card">
+          <div class="stars-orb">⭐</div>
+          <span class="eyebrow">SIZNING BALANSINGIZ</span>
+          <h2><b id="friendStars">0</b> Game Stars</h2>
+          <p>Har bir yangi do‘st botga taklif havolangiz orqali kirsa, sizga <strong>+0.5 ⭐</strong>.</p>
+          <button class="btn invite-btn" id="inviteBtn">🚀 DO‘STNI TAKLIF QILISH</button>
+          <button class="copy-link" id="copyInviteBtn">🔗 Havolani nusxalash</button>
+          <small>Game Stars — GameHub ichidagi virtual mukofot.</small>
+        </div>
+        <div class="friend-summary"><span>Taklif qilinganlar</span><b id="friendCount">0 do‘st</b></div>
+        <div class="friend-list" id="friendList"><div class="loader">Yuklanmoqda…</div></div>
       </section>
 
       <section id="leaderView" class="view">
@@ -50,7 +67,7 @@
         <div class="profile-card">
           <div class="avatar" id="profileAvatar">F</div><div class="level-ring"><span>1</span></div>
           <h1 id="profileName">O‘yinchi</h1><p id="profileUser">@telegram</p>
-          <div class="stats"><div><b id="statScore">0</b><span>BALL</span></div><div><b id="statWins">0</b><span>G‘ALABA</span></div><div><b id="statGames">0</b><span>O‘YIN</span></div></div>
+          <div class="stats"><div><b id="statScore">0</b><span>BALL</span></div><div><b id="statStars">0</b><span>STARS</span></div><div><b id="statWins">0</b><span>G‘ALABA</span></div><div><b id="statGames">0</b><span>O‘YIN</span></div></div>
         </div>
         <div class="achievement"><span>🔥</span><div><b>Birinchi qadam</b><p>Birinchi o‘yiningizni yakunlang</p></div><i id="achievementState">0/1</i></div>
         <div class="info-box"><b>Fera GameHub</b><p>UNO, Mafia va tezkor mini-o‘yinlar. Natijalar Telegram profilingizga saqlanadi.</p></div>
@@ -64,6 +81,7 @@
 
     <nav class="bottom-nav">
       <button class="nav-btn active" data-view="home"><span>⌂</span><b>Bosh sahifa</b></button>
+      <button class="nav-btn" data-view="friends"><span>♧</span><b>Do‘stlar</b></button>
       <button class="nav-btn" data-view="leader"><span>♛</span><b>Reyting</b></button>
       <button class="nav-btn" data-view="profile"><span>◉</span><b>Profil</b></button>
     </nav>
