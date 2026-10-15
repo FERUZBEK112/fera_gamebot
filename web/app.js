@@ -4,8 +4,8 @@ var tg=window.Telegram&&window.Telegram.WebApp;
 if(tg){tg.ready();tg.expand();try{tg.setHeaderColor("#070b17");tg.setBackgroundColor("#060914")}catch(e){}}
 var initData=tg?tg.initData:"";
 var user=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user?tg.initDataUnsafe.user:null;
-var profile={name:user?(user.first_name+(user.last_name?" "+user.last_name:"")):"Mehmon",username:user&&user.username?"@"+user.username:"Telegram orqali oching",score:0,wins:0,played:0};
-var sound=true,currentGame=null,reflexTimer=null;
+var profile={name:user?(user.first_name+(user.last_name?" "+user.last_name:"")):"Mehmon",username:user&&user.username?"@"+user.username:"Telegram orqali oching",score:0,wins:0,played:0,stars:0,referrals:0};
+var sound=true,currentGame=null,reflexTimer=null,challengeTimer=null,inviteLink="";
 var $=function(q){return document.querySelector(q)};
 var $$=function(q){return Array.prototype.slice.call(document.querySelectorAll(q))};
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]})}
@@ -19,19 +19,41 @@ function showView(name){
   if(name!=="game")$("#"+name+"View").classList.add("active");
   $(".bottom-nav").style.display=name==="game"?"none":"flex";
   if(name==="leader")loadLeaderboard();
+  if(name==="friends")loadFriends();
   if(name==="profile")renderProfile();
   window.scrollTo(0,0);
 }
 $$(".nav-btn").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});
-$("#backBtn").onclick=function(){if(reflexTimer)clearTimeout(reflexTimer);currentGame=null;showView("home")};
+$("#backBtn").onclick=function(){if(reflexTimer)clearTimeout(reflexTimer);if(challengeTimer)clearInterval(challengeTimer);currentGame=null;showView("home")};
 $("#soundBtn").onclick=function(){sound=!sound;this.textContent=sound?"♫":"×";toast(sound?"Ovoz yoqildi":"Ovoz o‘chirildi")};
 $$(".game-card").forEach(function(b){b.onclick=function(){openGame(b.dataset.game)}});
 function setGame(title,sub,score){$("#gameTitle").textContent=title;$("#gameSub").textContent=sub;$("#gameScore").textContent=score||"0"}
 async function loadProfile(){var d=await api("/api/profile");if(d&&d.ok){profile=d.user;renderProfile()}}
+
+async function loadFriends(){
+ var d=await api("/api/referral");
+ if(!d||!d.ok){$("#friendList").innerHTML='<div class="loader">Mini App’ni Telegram ichidan oching</div>';return}
+ inviteLink=d.link;profile.stars=d.stars;profile.referrals=d.count;
+ $("#friendStars").textContent=formatStars(d.stars);$("#friendCount").textContent=d.count+" do‘st";
+ $("#friendList").innerHTML=d.friends.length?d.friends.map(function(x){return'<div class="friend-row"><div class="friend-avatar">'+esc((x.name||"?").charAt(0))+'</div><div><h4>'+esc(x.name)+'</h4><p>'+esc(x.username||"Telegram foydalanuvchisi")+'</p></div><span>+0.5 ⭐</span></div>'}).join(""):'<div class="loader">Hali do‘st taklif qilinmagan</div>';
+ renderProfile();
+}
+function formatStars(n){return Number(n||0).toFixed(1).replace(".0","")}
+function shareInvite(){
+ if(!inviteLink){toast("Havola tayyorlanmoqda…");loadFriends();return}
+ var share="https://t.me/share/url?url="+encodeURIComponent(inviteLink)+"&text="+encodeURIComponent("🎮 Fera GameHub’da men bilan o‘yna! UNO, Mafia, Math va Quiz bor.");
+ if(tg&&tg.openTelegramLink)tg.openTelegramLink(share);else window.open(share,"_blank");
+}
+$("#inviteBtn").onclick=shareInvite;
+$("#copyInviteBtn").onclick=async function(){
+ if(!inviteLink){await loadFriends()}
+ if(!inviteLink)return toast("Telegram ichidan oching");
+ try{await navigator.clipboard.writeText(inviteLink);toast("Havola nusxalandi ✅")}catch(e){window.prompt("Taklif havolasi:",inviteLink)}
+};
 function renderProfile(){
   $("#profileName").textContent=profile.name||"O‘yinchi";$("#profileUser").textContent=profile.username||"";
   $("#profileAvatar").textContent=(profile.name||"F").charAt(0).toUpperCase();
-  $("#statScore").textContent=profile.score||0;$("#statWins").textContent=profile.wins||0;$("#statGames").textContent=profile.played||0;
+  $("#statScore").textContent=profile.score||0;$("#statStars").textContent=formatStars(profile.stars);$("#statWins").textContent=profile.wins||0;$("#statGames").textContent=profile.played||0;
   $("#achievementState").textContent=(profile.played?1:0)+"/1";
 }
 async function record(game,won,score){if(won){profile.wins=(profile.wins||0)+1}profile.played=(profile.played||0)+1;profile.score=(profile.score||0)+(score||0);renderProfile();await api("/api/result",{method:"POST",body:JSON.stringify({game:game,won:!!won,score:Math.max(0,Math.min(5000,score||0))})})}
@@ -42,7 +64,7 @@ async function loadLeaderboard(){
  $("#podium").innerHTML=order.map(function(x,i){var place=[2,1,3][i];return'<div class="podium-item '+classes[i]+'"><div class="p-avatar">'+esc((x.name||"?").charAt(0))+'</div><b>'+esc(x.name)+'</b><span>'+x.score+' ball</span><div class="stand">'+place+'</div></div>'}).join("");
  $("#rankList").innerHTML=rows.slice(3,20).map(function(x,i){return'<div class="rank-row"><span>'+(i+4)+'</span><div class="rank-avatar">'+esc((x.name||"?").charAt(0))+'</div><div><h4>'+esc(x.name)+'</h4><p>'+(x.wins||0)+' g‘alaba</p></div><b class="rank-score">'+(x.score||0)+'</b></div>'}).join("")||'<div class="loader">Hali boshqa o‘yinchilar yo‘q</div>';
 }
-function openGame(g){currentGame=g;showView("game");if(g==="uno")startUno();else if(g==="mafia")startMafia();else if(g==="rps")startRps();else startReflex()}
+function openGame(g){currentGame=g;if(challengeTimer)clearInterval(challengeTimer);showView("game");if(g==="uno")startUno();else if(g==="mafia")startMafia();else if(g==="rps")startRps();else if(g==="reflex")startReflex();else if(g==="math")startMath();else startQuiz()}
 
 /* UNO */
 var UCOL={R:"c-red",Y:"c-yellow",G:"c-green",B:"c-blue",W:"c-wild"},UNO=null;
@@ -115,5 +137,55 @@ function playRps(me){var icons=["✊","✌️","🖐️"],bot=Math.floor(Math.ra
 /* REFLEX */
 function startReflex(){setGame("REFLEX","REAKSIYA TESTI","⚡");$("#gameStage").innerHTML='<div class="reflex-box" id="reflexBox"><div class="reflex-content"><div class="bolt">⚡</div><h2>Qanchalik tezsiz?</h2><p>Rang yashil bo‘lganda darhol bosing.</p><button class="btn" id="reflexStart">BOSHLASH</button></div></div>';$("#reflexStart").onclick=armReflex}
 function armReflex(){var box=$("#reflexBox");box.className="reflex-box waiting";box.innerHTML='<div class="reflex-content"><div class="bolt pulse">•••</div><h2>Kuting…</h2><p>Hali bosmang</p></div>';var ready=false,start=0;box.onclick=function(){if(!ready){clearTimeout(reflexTimer);box.className="reflex-box early";box.innerHTML='<div class="reflex-content"><div class="bolt">😅</div><h2>Juda erta!</h2><button class="btn" id="retryReflex">QAYTA</button></div>';$("#retryReflex").onclick=function(e){e.stopPropagation();armReflex()}}else{var ms=Math.round(performance.now()-start),score=Math.max(10,Math.min(300,420-ms));record("reflex",ms<350,score);box.onclick=null;box.innerHTML='<div class="reflex-content"><div class="reflex-time">'+ms+' ms</div><h2>'+(ms<220?"CHАQMOQ!":ms<350?"AJOYIB!":"YAXSHI")+'</h2><p>+'+score+' ball</p><button class="btn" id="retryReflex">YANA</button></div>';$("#retryReflex").onclick=armReflex;haptic(ms<350?"success":"light")}};reflexTimer=setTimeout(function(){ready=true;start=performance.now();box.className="reflex-box ready";box.innerHTML='<div class="reflex-content"><div class="bolt">⚡</div><h2>BOSING!</h2></div>'},1500+Math.random()*2600)}
+
+/* MATH DUEL & QUIZ BLITZ */
+var CHALLENGE=null;
+var QUIZ_BANK=[
+ {q:"O‘zbekiston poytaxti qaysi shahar?",a:"Toshkent",o:["Samarqand","Buxoro","Xiva"]},
+ {q:"Yerning tabiiy yo‘ldoshi nima?",a:"Oy",o:["Mars","Quyosh","Venera"]},
+ {q:"Bir sutkada necha soat bor?",a:"24",o:["12","36","48"]},
+ {q:"Suvning kimyoviy formulasi?",a:"H₂O",o:["CO₂","O₂","NaCl"]},
+ {q:"Eng katta okean qaysi?",a:"Tinch okeani",o:["Atlantika","Hind okeani","Shimoliy Muz"]},
+ {q:"5 × 8 nechaga teng?",a:"40",o:["35","45","48"]},
+ {q:"Kamalakda nechta asosiy rang bor?",a:"7",o:["5","6","8"]},
+ {q:"Alisher Navoiy qaysi asar muallifi?",a:"Xamsa",o:["Boburnoma","Qutadg‘u bilig","Devonu lug‘otit turk"]},
+ {q:"Quyosh sistemasidagi eng katta sayyora?",a:"Yupiter",o:["Yer","Saturn","Mars"]},
+ {q:"1 kilometr necha metr?",a:"1000",o:["100","500","10000"]},
+ {q:"Kompyuterning “miyasi” nima?",a:"Protsessor",o:["Monitor","Klaviatura","Sichqoncha"]},
+ {q:"O‘zbekiston bayrog‘ida nechta yulduz bor?",a:"12",o:["8","10","14"]}
+];
+function startMath(){setGame("MATH DUEL","10 TA TEZKOR MISOL","0 / 10");CHALLENGE={type:"math",index:0,total:10,correct:0,score:0};nextChallenge()}
+function makeMath(){
+ var ops=["+","−","×"],op=ops[Math.floor(Math.random()*ops.length)],a,b,answer;
+ if(op==="×"){a=2+Math.floor(Math.random()*11);b=2+Math.floor(Math.random()*10);answer=a*b}
+ else if(op==="+"){a=5+Math.floor(Math.random()*46);b=3+Math.floor(Math.random()*40);answer=a+b}
+ else{a=15+Math.floor(Math.random()*45);b=2+Math.floor(Math.random()*(a-1));answer=a-b}
+ var values=[answer];while(values.length<4){var n=Math.max(0,answer+(Math.floor(Math.random()*13)-6));if(values.indexOf(n)<0)values.push(n)}
+ return{q:a+" "+op+" "+b+" = ?",a:String(answer),o:values.slice(1).map(String)}
+}
+function startQuiz(){setGame("QUIZ BLITZ","7 TA QIZIQARLI SAVOL","0 / 7");CHALLENGE={type:"quiz",index:0,total:7,correct:0,score:0,questions:shuffle(QUIZ_BANK.slice()).slice(0,7)};nextChallenge()}
+function nextChallenge(){
+ if(challengeTimer)clearInterval(challengeTimer);
+ if(CHALLENGE.index>=CHALLENGE.total)return endChallenge();
+ var item=CHALLENGE.type==="math"?makeMath():CHALLENGE.questions[CHALLENGE.index],answers=shuffle([item.a].concat(item.o)),locked=false;
+ $("#gameScore").textContent=CHALLENGE.correct+" / "+CHALLENGE.total;
+ $("#gameStage").innerHTML='<div class="challenge-wrap"><div class="challenge-top"><div class="challenge-progress"><i style="width:'+((CHALLENGE.index/CHALLENGE.total)*100)+'%"></i></div><span class="challenge-count">'+(CHALLENGE.index+1)+' / '+CHALLENGE.total+'</span></div><div class="question-card '+(CHALLENGE.type==="quiz"?"quiz-question":"")+'"><div class="question-icon">'+(CHALLENGE.type==="math"?"➗":"🧠")+'</div><h2>'+esc(item.q)+'</h2><p>To‘g‘ri javobni tanlang</p></div><div class="answer-grid">'+answers.map(function(x,i){return'<button class="answer-btn" data-answer="'+esc(x)+'"><small>'+["A","B","C","D"][i]+'</small>'+esc(x)+'</button>'}).join("")+'</div><div class="timer-bar"><i id="questionTimer"></i></div><div class="challenge-score">To‘g‘ri: <b>'+CHALLENGE.correct+'</b></div></div>';
+ function finish(answer,button){
+  if(locked)return;locked=true;clearInterval(challengeTimer);
+  var correct=answer===item.a;
+  if(correct){CHALLENGE.correct++;CHALLENGE.score+=CHALLENGE.type==="math"?15:20;haptic("success");if(button)button.classList.add("correct")}
+  else{haptic("error");if(button)button.classList.add("wrong");$("[data-answer]").forEach(function(b){if(b.dataset.answer===item.a)b.classList.add("correct")})}
+  $("[data-answer]").forEach(function(b){b.disabled=true});CHALLENGE.index++;setTimeout(nextChallenge,750);
+ }
+ $("[data-answer]").forEach(function(b){b.onclick=function(){finish(b.dataset.answer,b)}});
+ var left=100;challengeTimer=setInterval(function(){left-=1;var bar=$("#questionTimer");if(bar)bar.style.transform="scaleX("+(left/100)+")";if(left<=0)finish("",null)},100);
+}
+function endChallenge(){
+ if(challengeTimer)clearInterval(challengeTimer);
+ var pass=CHALLENGE.correct>=Math.ceil(CHALLENGE.total*.6),game=CHALLENGE.type,score=CHALLENGE.score;
+ record(game,pass,score);$("#gameScore").textContent=CHALLENGE.correct+" / "+CHALLENGE.total;
+ $("#gameStage").innerHTML='<div class="game-result"><div class="big">'+(pass?"🏆":"💪")+'</div><h2>'+(pass?"Ajoyib natija!":"Yana mashq qilamiz!")+'</h2><p>'+CHALLENGE.total+' savoldan '+CHALLENGE.correct+' ta to‘g‘ri • +'+score+' ball</p><button class="btn" id="againChallenge">YANA O‘YNASH</button></div>';
+ $("#againChallenge").onclick=game==="math"?startMath:startQuiz;
+}
 renderProfile();loadProfile();
 })();
