@@ -33,8 +33,8 @@ function haptic(type){sfx(type);if(tg&&tg.HapticFeedback){if(type==="success"||t
 function toast(msg){var el=$("#toast");el.textContent=msg;el.classList.add("show");setTimeout(function(){el.classList.remove("show")},1900)}
 async function api(path,options){options=options||{};options.headers=Object.assign({"Content-Type":"application/json","X-Telegram-Init-Data":initData},options.headers||{});try{var r=await fetch(path,options);if(!r.ok)throw new Error();return await r.json()}catch(e){return null}}
 function showView(name){
-  $$$(".view").forEach(function(v){v.classList.remove("active")});
-  $$$(".nav-btn").forEach(function(v){v.classList.toggle("active",v.dataset.view===name)});
+  $$(".view").forEach(function(v){v.classList.remove("active")});
+  $$(".nav-btn").forEach(function(v){v.classList.toggle("active",v.dataset.view===name)});
   $("#gameView").classList.toggle("active",name==="game");
   if(name!=="game")$("#"+name+"View").classList.add("active");
   $(".bottom-nav").style.display=name==="game"?"none":"flex";
@@ -44,10 +44,10 @@ function showView(name){
   if(name==="profile")renderProfile();
   window.scrollTo(0,0);
 }
-$$$(".nav-btn").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});
+$$(".nav-btn").forEach(function(b){b.onclick=function(){showView(b.dataset.view)}});
 $("#backBtn").onclick=function(){if(reflexTimer)clearTimeout(reflexTimer);if(challengeTimer)clearInterval(challengeTimer);currentGame=null;showView("home")};
 $("#soundBtn").onclick=function(){sound=!sound;this.textContent=sound?"♫":"🔇";if(sound&&currentGame)startMusic();else stopMusic();haptic("light");toast(sound?"Musiqa yoqildi":"Musiqa o‘chirildi")};
-$$$(".game-card").forEach(function(b){b.onclick=function(){openGame(b.dataset.game)}});
+$$(".game-card").forEach(function(b){b.onclick=function(){openGame(b.dataset.game)}});
 function setGame(title,sub,score){$("#gameTitle").textContent=title;$("#gameSub").textContent=sub;$("#gameScore").textContent=score||"0"}
 async function loadProfile(){var d=await api("/api/profile");if(d&&d.ok){profile=d.user;renderProfile()}}
 
@@ -103,11 +103,11 @@ function unoCard(card,index,enabled){return'<button class="uno-card-btn '+UCOL[c
 function renderUno(){
  var top=UNO.discard[UNO.discard.length-1];
  $("#gameStage").innerHTML='<div class="uno-board"><div class="opponents">'+[1,2,3].map(function(p){return'<div class="opponent '+(UNO.turn===p?"turning":"")+'"><div class="face">'+["🤖","👾","🦾"][p-1]+'</div><b>BOT '+p+'</b><span>'+UNO.hands[p].length+' karta</span></div>'}).join("")+'</div><div class="uno-center"><div class="uno-pile uno-deck">UNO<br>'+UNO.deck.length+'</div><div class="uno-pile '+UCOL[top.c]+'">'+esc(top.v)+'</div><div class="uno-log">'+esc(UNO.log)+'</div></div><div class="uno-actions"><span>'+(UNO.turn===0?"Sizning yurishingiz":"Bot o‘ylayapti…")+'</span><button class="btn secondary" id="unoDraw" '+(UNO.turn!==0?"disabled":"")+'>+ KARTA OLISH</button></div><div class="uno-hand">'+UNO.hands[0].map(function(c,i){return unoCard(c,i,UNO.turn===0&&legalUno(c))}).join("")+'</div></div>';
- $$$("#gameStage [data-u]").forEach(function(b){b.onclick=function(){playerUno(Number(b.dataset.u))}});
+ $$("#gameStage [data-u]").forEach(function(b){b.onclick=function(){playerUno(Number(b.dataset.u))}});
  var dr=$("#unoDraw");if(dr)dr.onclick=function(){drawUno(0);UNO.log="Siz karta oldingiz";UNO.turn=nextUno(0,1);renderUno();setTimeout(botUno,650)};
 }
 function nextUno(p,step){return(p+UNO.dir*(step||1)+4)%4}
-function playerUno(i){var c=UNO.hands[0][i];if(c.c==="W"){haptic("light");$("#gameStage").innerHTML='<div class="game-result"><div class="big">🌈</div><h2>Rangni tanlang</h2><div class="color-pick">'+["R","Y","G","B"].map(function(x){return'<button class="'+UCOL[x]+'" data-color="'+x+'"></button>'}).join("")+'</div></div>';$$$("[data-color]").forEach(function(b){b.onclick=function(){commitUno(0,i,b.dataset.color)}})}else commitUno(0,i,c.c)}
+function playerUno(i){var c=UNO.hands[0][i];if(c.c==="W"){haptic("light");$("#gameStage").innerHTML='<div class="game-result"><div class="big">🌈</div><h2>Rangni tanlang</h2><div class="color-pick">'+["R","Y","G","B"].map(function(x){return'<button class="'+UCOL[x]+'" data-color="'+x+'"></button>'}).join("")+'</div></div>';$$("[data-color]").forEach(function(b){b.onclick=function(){commitUno(0,i,b.dataset.color)}})}else commitUno(0,i,c.c)}
 function commitUno(p,i,color){
  var card=UNO.hands[p].splice(i,1)[0];UNO.discard.push(card);UNO.color=card.c==="W"?color:card.c;UNO.log=(p===0?"Siz":"Bot "+p)+" "+card.v+" tashladi";
  if(!UNO.hands[p].length)return endUno(p===0);
@@ -135,7 +135,7 @@ function renderMafia(){
  var night=MAF.phase==="night";var selectable=MAF.alive.map(function(x,i){return x&&i!==0?i:null}).filter(function(x){return x!=null});
  var title=night?"🌙 Tun":"☀️ "+MAF.day+"-kun";var sub=night?(role==="Mafiya"?"Kimni yo‘q qilasiz?":role==="Doktor"?"Kimni qutqarasiz?":role==="Detektiv"?"Kimni tekshirasiz?":"Shahar uxlamoqda…"):"Kim mafiyachi? Ovoz bering.";
  $("#gameStage").innerHTML='<div class="mafia-scene"><div class="phase-banner"><b>'+title+'</b><span>'+sub+'</span></div><div class="players-grid">'+MAF.alive.map(function(alive,i){if(i===0)return'<div class="player-tile"><div class="face">'+ROLEINFO[role][0]+'</div><b>SIZ</b></div>';return'<button class="player-tile '+(!alive?"dead ":"")+(alive?"selectable":"")+'" '+(alive?'data-m="'+i+'"':'')+'><div class="face">'+["🤵","👩","🧔","👨","👩‍🦰","🧑"][i-1]+'</div><b>BOT '+i+'</b></button>'}).join("")+'</div><div class="mafia-log">'+esc(MAF.log)+'</div><div class="mafia-action" id="mafiaAction"></div></div>';
- var canChoose=!night||role!=="Fuqaro";if(canChoose)$$$("[data-m]").forEach(function(b){b.onclick=function(){if(night)mafiaNight(Number(b.dataset.m));else mafiaVote(Number(b.dataset.m))}});
+ var canChoose=!night||role!=="Fuqaro";if(canChoose)$$("[data-m]").forEach(function(b){b.onclick=function(){if(night)mafiaNight(Number(b.dataset.m));else mafiaVote(Number(b.dataset.m))}});
  else $("#mafiaAction").innerHTML='<button class="btn" id="waitNight">TONGNI KUTISH</button>';
  var w=$("#waitNight");if(w)w.onclick=function(){mafiaNight(null)};
 }
@@ -157,7 +157,7 @@ function mafiaWinner(){var m=0,c=0;MAF.alive.forEach(function(x,i){if(x){if(MAF.
 function endMafia(side){var playerSide=MAF.roles[0]==="Mafiya"?"Mafiya":"Shahar",win=side===playerSide;haptic(win?"success":"error");record("mafia",win,win?180:20);$("#gameStage").innerHTML='<div class="game-result"><div class="big">'+(win?"🏆":"🎭")+'</div><h2>'+side+" yutdi"+'</h2><p>'+(win?"+180 ball. Sirni ajoyib saqladingiz!":"Bu shaharda hech kimga ishonib bo‘lmaydi…")+'</p><button class="btn" id="againM">YANA O‘YNASH</button></div>';$("#againM").onclick=startMafia}
 
 /* RPS */
-function startRps(){setGame("RPS BATTLE","TEZKOR JANG","BO3");$("#gameStage").innerHTML='<div class="rps-arena"><span class="eyebrow">TANLOVINGIZ</span><div class="rps-battle"><div class="rps-choice" id="myRps">?</div><b class="rps-vs">VS</b><div class="rps-choice" id="botRps">🤖</div></div><div class="rps-buttons">'+["✊","✌️","🖐️"].map(function(x,i){return'<button data-rps="'+i+'">'+x+'</button>'}).join("")+'</div><p class="uno-log" id="rpsText">Tosh, qaychi yoki qog‘ozni tanlang</p></div>';$$$("[data-rps]").forEach(function(b){b.onclick=function(){playRps(Number(b.dataset.rps))}})}
+function startRps(){setGame("RPS BATTLE","TEZKOR JANG","BO3");$("#gameStage").innerHTML='<div class="rps-arena"><span class="eyebrow">TANLOVINGIZ</span><div class="rps-battle"><div class="rps-choice" id="myRps">?</div><b class="rps-vs">VS</b><div class="rps-choice" id="botRps">🤖</div></div><div class="rps-buttons">'+["✊","✌️","🖐️"].map(function(x,i){return'<button data-rps="'+i+'">'+x+'</button>'}).join("")+'</div><p class="uno-log" id="rpsText">Tosh, qaychi yoki qog‘ozni tanlang</p></div>';$$("[data-rps]").forEach(function(b){b.onclick=function(){playRps(Number(b.dataset.rps))}})}
 function playRps(me){var icons=["✊","✌️","🖐️"],bot=Math.floor(Math.random()*3),win=(me-bot+3)%3===2,draw=me===bot;$("#myRps").textContent=icons[me];$("#botRps").textContent=icons[bot];$("#rpsText").textContent=draw?"DURRANG":win?"SIZ YUTDINGIZ! +40 BALL":"BOT YUTDI";haptic(draw?"light":win?"success":"error");record("rps",win,win?40:0);setTimeout(function(){var a=document.createElement("button");a.className="btn";a.textContent="YANA";a.onclick=startRps;$("#rpsText").after(a)},500)}
 
 /* REFLEX */
