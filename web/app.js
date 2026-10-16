@@ -246,21 +246,12 @@ function submitGuess(){
 
 /* MATH DUEL & QUIZ BLITZ */
 var CHALLENGE=null;
-var QUIZ_BANK=[
- {q:"O‘zbekiston poytaxti qaysi shahar?",a:"Toshkent",o:["Samarqand","Buxoro","Xiva"]},
- {q:"Yerning tabiiy yo‘ldoshi nima?",a:"Oy",o:["Mars","Quyosh","Venera"]},
- {q:"Bir sutkada necha soat bor?",a:"24",o:["12","36","48"]},
- {q:"Suvning kimyoviy formulasi?",a:"H₂O",o:["CO₂","O₂","NaCl"]},
- {q:"Eng katta okean qaysi?",a:"Tinch okeani",o:["Atlantika","Hind okeani","Shimoliy Muz"]},
- {q:"5 × 8 nechaga teng?",a:"40",o:["35","45","48"]},
- {q:"Kamalakda nechta asosiy rang bor?",a:"7",o:["5","6","8"]},
- {q:"Alisher Navoiy qaysi asar muallifi?",a:"Xamsa",o:["Boburnoma","Qutadg‘u bilig","Devonu lug‘otit turk"]},
- {q:"Quyosh sistemasidagi eng katta sayyora?",a:"Yupiter",o:["Yer","Saturn","Mars"]},
- {q:"1 kilometr necha metr?",a:"1000",o:["100","500","10000"]},
- {q:"Kompyuterning “miyasi” nima?",a:"Protsessor",o:["Monitor","Klaviatura","Sichqoncha"]},
- {q:"O‘zbekiston bayrog‘ida nechta yulduz bor?",a:"12",o:["8","10","14"]}
-];
-function startMath(){setGame("MATH DUEL","10 TA TEZKOR MISOL","0 / 10");CHALLENGE={type:"math",index:0,total:10,correct:0,score:0};nextChallenge()}
+var QUIZ_BANKS={"uz":[{"q":"O‘zbekiston poytaxti qaysi shahar?","a":"Toshkent","o":["Samarqand","Buxoro","Xiva"]},{"q":"Yerning tabiiy yo‘ldoshi nima?","a":"Oy","o":["Mars","Quyosh","Venera"]},{"q":"Bir sutkada necha soat bor?","a":"24","o":["12","36","48"]},{"q":"Suvning kimyoviy formulasi?","a":"H₂O","o":["CO₂","O₂","NaCl"]},{"q":"Eng katta okean qaysi?","a":"Tinch okeani","o":["Atlantika","Hind okeani","Shimoliy Muz"]},{"q":"5 × 8 nechaga teng?","a":"40","o":["35","45","48"]},{"q":"Kamalakda nechta asosiy rang bor?","a":"7","o":["5","6","8"]},{"q":"Alisher Navoiy qaysi asar muallifi?","a":"Xamsa","o":["Boburnoma","Qutadg‘u bilig","Devonu lug‘otit turk"]},{"q":"Quyosh sistemasidagi eng katta sayyora?","a":"Yupiter","o":["Yer","Saturn","Mars"]},{"q":"1 kilometr necha metr?","a":"1000","o":["100","500","10000"]},{"q":"Kompyuterning “miyasi” nima?","a":"Protsessor","o":["Monitor","Klaviatura","Sichqoncha"]},{"q":"O‘zbekiston bayrog‘ida nechta yulduz bor?","a":"12","o":["8","10","14"]}],"ru":[{"q":"Какой город является столицей Узбекистана?","a":"Ташкент","o":["Самарканд","Бухара","Хива"]},{"q":"Как называется естественный спутник Земли?","a":"Луна","o":["Марс","Солнце","Венера"]},{"q":"Сколько часов в сутках?","a":"24","o":["12","36","48"]},{"q":"Какова химическая формула воды?","a":"H₂O","o":["CO₂","O₂","NaCl"]},{"q":"Какой океан самый большой?","a":"Тихий океан","o":["Атлантический","Индийский","Северный Ледовитый"]},{"q":"Сколько будет 5 × 8?","a":"40","o":["35","45","48"]},{"q":"Сколько основных цветов в радуге?","a":"7","o":["5","6","8"]},{"q":"Какое произведение написал Алишер Навои?","a":"Хамса","o":["Бабур-наме","Кутадгу билиг","Диван лугат ат-турк"]},{"q":"Какая планета самая большая?","a":"Юпитер","o":["Земля","Сатурн","Марс"]},{"q":"Сколько метров в одном километре?","a":"1000","o":["100","500","10000"]},{"q":"Что называют «мозгом» компьютера?","a":"Процессор","o":["Монитор","Клавиатура","Мышь"]},{"q":"Сколько звёзд на флаге Узбекистана?","a":"12","o":["8","10","14"]}],"en":[{"q":"What is the capital of Uzbekistan?","a":"Tashkent","o":["Samarkand","Bukhara","Khiva"]},{"q":"What is Earth’s natural satellite?","a":"The Moon","o":["Mars","The Sun","Venus"]},{"q":"How many hours are in a day?","a":"24","o":["12","36","48"]},{"q":"What is the chemical formula for water?","a":"H₂O","o":["CO₂","O₂","NaCl"]},{"q":"Which is the largest ocean?","a":"Pacific Ocean","o":["Atlantic Ocean","Indian Ocean","Arctic Ocean"]},{"q":"What is 5 × 8?","a":"40","o":["35","45","48"]},{"q":"How many main colors are in a rainbow?","a":"7","o":["5","6","8"]},{"q":"Which work was written by Alisher Navoi?","a":"Khamsa","o":["Baburnama","Kutadgu Bilig","Dīwān Lughāt al-Turk"]},{"q":"Which is the largest planet?","a":"Jupiter","o":["Earth","Saturn","Mars"]},{"q":"How many meters are in one kilometer?","a":"1000","o":["100","500","10000"]},{"q":"What is the “brain” of a computer?","a":"Processor","o":["Monitor","Keyboard","Mouse"]},{"q":"How many stars are on Uzbekistan’s flag?","a":"12","o":["8","10","14"]}]};
+var CHALLENGE_COPY={"uz":{"mathSub":"10 TA TEZKOR MISOL","quizSub":"7 TA QIZIQARLI SAVOL","choose":"To‘g‘ri javobni tanlang","correct":"To‘g‘ri","great":"Ajoyib natija!","practice":"Yana mashq qilamiz!","again":"YANA O‘YNASH","questions":"savoldan","right":"ta to‘g‘ri","points":"ball"},"ru":{"mathSub":"10 БЫСТРЫХ ПРИМЕРОВ","quizSub":"7 ИНТЕРЕСНЫХ ВОПРОСОВ","choose":"Выберите правильный ответ","correct":"Правильно","great":"Отличный результат!","practice":"Попробуем ещё раз!","again":"ИГРАТЬ СНОВА","questions":"вопросов,","right":"правильных ответов","points":"очков"},"en":{"mathSub":"10 QUICK PROBLEMS","quizSub":"7 FUN QUESTIONS","choose":"Choose the correct answer","correct":"Correct","great":"Great result!","practice":"Let’s practice again!","again":"PLAY AGAIN","questions":"questions,","right":"correct","points":"points"}};
+function currentLanguage(){var code=window.FeraI18n?window.FeraI18n.getLanguage():"uz";return QUIZ_BANKS[code]?code:"uz"}
+function challengeText(key){return CHALLENGE_COPY[currentLanguage()][key]}
+
+function startMath(){setGame("MATH DUEL",challengeText("mathSub"),"0 / 10");CHALLENGE={type:"math",index:0,total:10,correct:0,score:0};nextChallenge()}
 function makeMath(){
  var ops=["+","−","×"],op=ops[Math.floor(Math.random()*ops.length)],a,b,answer;
  if(op==="×"){a=2+Math.floor(Math.random()*11);b=2+Math.floor(Math.random()*10);answer=a*b}
@@ -269,13 +260,13 @@ function makeMath(){
  var values=[answer];while(values.length<4){var n=Math.max(0,answer+(Math.floor(Math.random()*13)-6));if(values.indexOf(n)<0)values.push(n)}
  return{q:a+" "+op+" "+b+" = ?",a:String(answer),o:values.slice(1).map(String)}
 }
-function startQuiz(){setGame("QUIZ BLITZ","7 TA QIZIQARLI SAVOL","0 / 7");CHALLENGE={type:"quiz",index:0,total:7,correct:0,score:0,questions:shuffle(QUIZ_BANK.slice()).slice(0,7)};nextChallenge()}
+function startQuiz(){setGame("QUIZ BLITZ",challengeText("quizSub"),"0 / 7");var bank=QUIZ_BANKS[currentLanguage()];CHALLENGE={type:"quiz",index:0,total:7,correct:0,score:0,questions:shuffle(bank.slice()).slice(0,7)};nextChallenge()}
 function nextChallenge(){
  if(challengeTimer)clearInterval(challengeTimer);
  if(CHALLENGE.index>=CHALLENGE.total)return endChallenge();
  var item=CHALLENGE.type==="math"?makeMath():CHALLENGE.questions[CHALLENGE.index],answers=shuffle([item.a].concat(item.o)),locked=false;
  $("#gameScore").textContent=CHALLENGE.correct+" / "+CHALLENGE.total;
- $("#gameStage").innerHTML='<div class="challenge-wrap"><div class="challenge-top"><div class="challenge-progress"><i style="width:'+((CHALLENGE.index/CHALLENGE.total)*100)+'%"></i></div><span class="challenge-count">'+(CHALLENGE.index+1)+' / '+CHALLENGE.total+'</span></div><div class="question-card '+(CHALLENGE.type==="quiz"?"quiz-question":"")+'"><div class="question-icon">'+(CHALLENGE.type==="math"?"➗":"🧠")+'</div><h2>'+esc(item.q)+'</h2><p>To‘g‘ri javobni tanlang</p></div><div class="answer-grid">'+answers.map(function(x,i){return'<button class="answer-btn" data-answer="'+esc(x)+'"><small>'+["A","B","C","D"][i]+'</small>'+esc(x)+'</button>'}).join("")+'</div><div class="timer-bar"><i id="questionTimer"></i></div><div class="challenge-score">To‘g‘ri: <b>'+CHALLENGE.correct+'</b></div></div>';
+ $("#gameStage").innerHTML='<div class="challenge-wrap"><div class="challenge-top"><div class="challenge-progress"><i style="width:'+((CHALLENGE.index/CHALLENGE.total)*100)+'%"></i></div><span class="challenge-count">'+(CHALLENGE.index+1)+' / '+CHALLENGE.total+'</span></div><div class="question-card '+(CHALLENGE.type==="quiz"?"quiz-question":"")+'"><div class="question-icon">'+(CHALLENGE.type==="math"?"➗":"🧠")+'</div><h2>'+esc(item.q)+'</h2><p>'+esc(challengeText("choose"))+'</p></div><div class="answer-grid">'+answers.map(function(x,i){return'<button class="answer-btn" data-answer="'+esc(x)+'"><small>'+["A","B","C","D"][i]+'</small>'+esc(x)+'</button>'}).join("")+'</div><div class="timer-bar"><i id="questionTimer"></i></div><div class="challenge-score">'+esc(challengeText("correct"))+': <b>'+CHALLENGE.correct+'</b></div></div>';
  function finish(answer,button){
   if(locked)return;locked=true;clearInterval(challengeTimer);
   var correct=answer===item.a;
@@ -290,7 +281,7 @@ function endChallenge(){
  if(challengeTimer)clearInterval(challengeTimer);
  var pass=CHALLENGE.correct>=Math.ceil(CHALLENGE.total*.6),game=CHALLENGE.type,score=CHALLENGE.score;
  record(game,pass,score);$("#gameScore").textContent=CHALLENGE.correct+" / "+CHALLENGE.total;
- $("#gameStage").innerHTML='<div class="game-result"><div class="big">'+(pass?"🏆":"💪")+'</div><h2>'+(pass?"Ajoyib natija!":"Yana mashq qilamiz!")+'</h2><p>'+CHALLENGE.total+' savoldan '+CHALLENGE.correct+' ta to‘g‘ri • +'+score+' ball</p><button class="btn" id="againChallenge">YANA O‘YNASH</button></div>';
+ $("#gameStage").innerHTML='<div class="game-result"><div class="big">'+(pass?"🏆":"💪")+'</div><h2>'+esc(pass?challengeText("great"):challengeText("practice"))+'</h2><p>'+CHALLENGE.total+' '+esc(challengeText("questions"))+' '+CHALLENGE.correct+' '+esc(challengeText("right"))+' • +'+score+' '+esc(challengeText("points"))+'</p><button class="btn" id="againChallenge">'+esc(challengeText("again"))+'</button></div>';
  $("#againChallenge").onclick=game==="math"?startMath:startQuiz;
 }
 renderProfile();loadProfile();
