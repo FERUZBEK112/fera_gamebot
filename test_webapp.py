@@ -31,6 +31,11 @@ class MiniAppTest(unittest.TestCase):
         self.assertIn("onFeraLanguageChange", APP)
         self.assertIn("/api/language", APP)
 
+    def test_language_switch_has_click_delegation_and_local_precedence(self):
+        self.assertIn('target.closest("[data-language]")', I18N)
+        self.assertIn("localLanguage", APP)
+        self.assertIn("profile.language!==localLanguage", APP)
+
     def test_music_and_cache_busting_are_enabled(self):
         self.assertIn("function startMusic()", APP)
         self.assertIn("function stopMusic()", APP)
