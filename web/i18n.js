@@ -99,8 +99,12 @@ function translateNode(node){
 }
 function apply(){
  document.documentElement.lang=lang||"uz";
+ if(document.body)document.body.setAttribute("data-language",lang||"uz");
  Array.prototype.slice.call(document.querySelectorAll("[data-i18n]")).forEach(function(el){el.textContent=t(el.dataset.i18n)});
  Array.prototype.slice.call(document.querySelectorAll("[data-i18n-html]")).forEach(function(el){el.innerHTML=t(el.dataset.i18nHtml)});
+ Array.prototype.slice.call(document.querySelectorAll("[data-language]")).forEach(function(el){
+  var active=el.dataset.language===lang;el.classList.toggle("active",active);el.setAttribute("aria-pressed",active?"true":"false");
+ });
  translateNode(document.body);
 }
 function showGate(){var gate=document.getElementById("languageGate");if(gate)gate.classList.add("show")}
@@ -109,11 +113,17 @@ function setLanguage(code,notify){
  if(supported.indexOf(code)<0)return;
  lang=code;try{localStorage.setItem(storageKey,code)}catch(e){}
  apply();hideGate();
+ if(window.requestAnimationFrame)window.requestAnimationFrame(apply);else setTimeout(apply,0);
  if(notify!==false&&typeof window.onFeraLanguageChange==="function")window.onFeraLanguageChange(code);
 }
 window.FeraI18n={t:t,getLanguage:function(){return lang},setLanguage:setLanguage,showGate:showGate,hideGate:hideGate,apply:apply};
-Array.prototype.slice.call(document.querySelectorAll("[data-language]")).forEach(function(button){button.addEventListener("click",function(){setLanguage(button.dataset.language,true)})});
-var change=document.getElementById("changeLanguageBtn");if(change)change.addEventListener("click",showGate);
+document.addEventListener("click",function(event){
+ var target=event.target;
+ var button=target&&target.closest?target.closest("[data-language]"):null;
+ if(button){event.preventDefault();event.stopPropagation();setLanguage(button.dataset.language,true);return}
+ var change=target&&target.closest?target.closest("#changeLanguageBtn"):null;
+ if(change){event.preventDefault();showGate()}
+});
 if(lang){apply();hideGate()}else showGate();
 if(window.MutationObserver){new MutationObserver(function(records){records.forEach(function(record){Array.prototype.slice.call(record.addedNodes||[]).forEach(translateNode)})}).observe(document.body,{childList:true,subtree:true})}
 })();
