@@ -36,6 +36,13 @@ class MiniAppTest(unittest.TestCase):
         self.assertIn("localLanguage", APP)
         self.assertIn("profile.language!==localLanguage", APP)
 
+    def test_quiz_content_is_fully_localized(self):
+        self.assertIn("QUIZ_BANKS", APP)
+        self.assertIn("Какой город является столицей Узбекистана?", APP)
+        self.assertIn("What is the capital of Uzbekistan?", APP)
+        self.assertIn('challengeText("quizSub")', APP)
+        self.assertNotIn("shuffle(QUIZ_BANK.slice())", APP)
+
     def test_music_and_cache_busting_are_enabled(self):
         self.assertIn("function startMusic()", APP)
         self.assertIn("function stopMusic()", APP)
