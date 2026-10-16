@@ -54,17 +54,28 @@ async function loadProfile(){
  var d=await api("/api/profile");
  if(d&&d.ok){
   profile=d.user;renderProfile();
-  if(profile.language&&window.FeraI18n)window.FeraI18n.setLanguage(profile.language,false);
-  else if(window.FeraI18n&&window.FeraI18n.getLanguage())saveLanguage(window.FeraI18n.getLanguage(),false);
+  if(window.FeraI18n){
+   var localLanguage=window.FeraI18n.getLanguage();
+   if(localLanguage){
+    window.FeraI18n.setLanguage(localLanguage,false);
+    if(profile.language!==localLanguage)saveLanguage(localLanguage,false);
+   }else if(profile.language){
+    window.FeraI18n.setLanguage(profile.language,false);
+   }
+  }
  }
 }
 async function saveLanguage(language,showMessage){
  profile.language=language;
  var d=await api("/api/language",{method:"POST",body:JSON.stringify({language:language})});
+ if(window.FeraI18n)window.FeraI18n.apply();
  if(showMessage!==false)toast(tr("languageSaved"));
  return d;
 }
-window.onFeraLanguageChange=function(language){saveLanguage(language,true)};
+window.onFeraLanguageChange=async function(language){
+ await saveLanguage(language,true);
+ if(window.FeraI18n)window.FeraI18n.apply();
+};
 
 async function loadFriends(){
  var d=await api("/api/referral");
