@@ -23,3 +23,6 @@
 .language-panel>span{font-size:9px;letter-spacing:4px;color:#7584aa}.language-panel h2{margin:20px 0 5px;font-size:25px}.language-panel>p{margin:0 0 20px;color:#7f8ba8;font-size:11px}
 .language-options{display:grid;gap:10px}.language-options button{display:grid;grid-template-columns:48px 1fr 35px;align-items:center;min-height:64px;padding:8px 14px;border:1px solid #ffffff12;border-radius:19px;background:#111a31;color:#fff;text-align:left}.language-options button:active{transform:scale(.98);border-color:var(--cyan)}.language-options b{font-size:27px}.language-options span{font-size:14px;font-weight:900}.language-options i{font-style:normal;color:#62708f;font-size:10px;font-weight:900}
 .language-settings{width:100%;margin-top:13px;padding:14px;border:1px solid #ffffff10;border-radius:17px;background:#0d1426;color:#dce5fa;font-size:12px;font-weight:800}
+
+.language-options button.active{border-color:var(--cyan);background:linear-gradient(145deg,#173553,#152044);box-shadow:0 0 0 2px #38ddff22,0 10px 30px #1f78ff22}
+.language-options button.active i{color:var(--cyan)}
